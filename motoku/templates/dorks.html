@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Google Dorks{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-shield-shaded text-success"></i> Google Dork Generator</h2>
+        <p class="text-secondary">Generate advanced Google search queries (dorks) untuk menemukan informasi sensitif atau celah pada target domain.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-success">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="target" class="form-label">Domain Target</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="target" name="target"
+                                   placeholder="example.com" required
+                                   value="{{ request.form.get('target', target) }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-search"></i> Generate Dorks
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card border-secondary mt-3">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Tentang Google Dorks</h6>
+                <small class="text-secondary">
+                    Google Dorks adalah teknik pencarian lanjutan menggunakan operator khusus (site:, filetype:, inurl:, intitle:, dll)
+                    untuk menemukan informasi yang tidak sengaja terekspos di internet.
+                    <br><br>
+                    <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Gunakan hanya pada domain yang Anda miliki atau memiliki izin.</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if dorks %}
+        <div class="accordion" id="dorksAccordion">
+            {% for group in dorks %}
+            <div class="accordion-item border-success mb-2">
+                <h2 class="accordion-header">
+                    <button class="accordion-button {% if not loop.first %}collapsed{% endif %} bg-dark text-light" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#dorkGroup{{ loop.index }}">
+                        <i class="bi bi-folder2-open text-success me-2"></i>
+                        {{ group.category }}
+                        <span class="badge bg-success ms-2">{{ group.items|length }}</span>
+                    </button>
+                </h2>
+                <div id="dorkGroup{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+                     data-bs-parent="#dorksAccordion">
+                    <div class="accordion-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for item in group.items %}
+                            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <code class="text-success small">{{ item.dork }}</code>
+                                </div>
+                                <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-outline-success ms-2">
+                                    <i class="bi bi-box-arrow-up-right"></i> Cari
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

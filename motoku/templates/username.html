@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Username Tracker{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-person-badge-fill text-warning"></i> Username Tracker</h2>
+        <p class="text-secondary">Cari username di 22 platform sosial media.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-warning">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="username" name="username"
+                                   placeholder="john_doe" required
+                                   value="{{ request.form.get('username', '') }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="bi bi-search"></i> Cari Username
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if results is not none %}
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark"><i class="bi bi-list-check"></i> Hasil Pencarian</div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for item in results %}
+                    <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
+                                {% if item.found %}list-group-item-success{% else %}list-group-item-dark{% endif %}">
+                        <div>
+                            <strong>{{ item.name }}</strong><br>
+                            <small class="text-secondary">{{ item.url }}</small>
+                        </div>
+                        {% if item.found %}
+                        <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle"></i> Ditemukan</a>
+                        {% else %}
+                        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-x-circle"></i> Tidak</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

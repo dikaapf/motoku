@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}IP Tracker{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-globe2 text-info"></i> IP Address Tracker</h2>
+        <p class="text-secondary">Masukkan alamat IP untuk mendapatkan informasi geolokasi dan jaringan.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-info">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="ip" class="form-label">Alamat IP</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="ip" name="ip"
+                                   placeholder="8.8.8.8" required
+                                   value="{{ request.form.get('ip', '') }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="bi bi-search"></i> Lacak IP
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-secondary mt-3">
+            <div class="card-body text-center">
+                <h6><i class="bi bi-info-circle"></i> IP Saya</h6>
+                <p class="h4 mb-0" id="myip">Memuat...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if result %}
+        <div class="card border-info">
+            <div class="card-header bg-info text-dark"><i class="bi bi-info-circle"></i> Hasil Pelacakan IP</div>
+            <div class="card-body">
+                <table class="table table-dark table-striped table-hover mb-0">
+                    <tbody>
+                        <tr><td class="fw-bold">IP</td><td><code>{{ result.ip }}</code></td></tr>
+                        <tr><td class="fw-bold">Tipe</td><td>{{ result.type }}</td></tr>
+                        <tr><td class="fw-bold">Benua</td><td>{{ result.continent }}</td></tr>
+                        <tr><td class="fw-bold">Negara</td><td>{{ result.flag }} {{ result.country }} ({{ result.country_code }})</td></tr>
+                        <tr><td class="fw-bold">Region</td><td>{{ result.region }}</td></tr>
+                        <tr><td class="fw-bold">Kota</td><td>{{ result.city }}</td></tr>
+                        <tr><td class="fw-bold">Latitude</td><td>{{ result.latitude }}</td></tr>
+                        <tr><td class="fw-bold">Longitude</td><td>{{ result.longitude }}</td></tr>
+                        <tr><td class="fw-bold">Kode Pos</td><td>{{ result.postal }}</td></tr>
+                        <tr><td class="fw-bold">Kode Telepon</td><td>+{{ result.calling_code }}</td></tr>
+                        <tr><td class="fw-bold">Ibukota</td><td>{{ result.capital }}</td></tr>
+                        <tr><td class="fw-bold">ASN</td><td>{{ result.asn }}</td></tr>
+                        <tr><td class="fw-bold">Organisasi</td><td>{{ result.org }}</td></tr>
+                        <tr><td class="fw-bold">ISP</td><td>{{ result.isp }}</td></tr>
+                        <tr><td class="fw-bold">Timezone</td><td>{{ result.timezone_id }}</td></tr>
+                        <tr><td class="fw-bold">Waktu</td><td>{{ result.current_time }}</td></tr>
+                        <tr><td class="fw-bold">Google Maps</td>
+                            <td><a href="{{ result.maps_url }}" target="_blank" class="btn btn-sm btn-outline-info"><i class="bi bi-map"></i> Buka Peta</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

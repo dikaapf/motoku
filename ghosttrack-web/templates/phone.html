@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Phone Tracker{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-telephone-fill text-success"></i> Phone Number Tracker</h2>
+        <p class="text-secondary">Masukkan nomor telepon dengan kode negara untuk mendapatkan informasi.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="number" class="form-label">Nomor Telepon</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="number" name="number"
+                                   placeholder="+6281234567890" required
+                                   value="{{ request.form.get('number', '') }}">
+                        </div>
+                        <div class="form-text text-secondary">
+                            Gunakan format internasional (contoh: +6281234567890)
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-search"></i> Lacak Nomor
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        {% if error %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if result %}
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-info-circle"></i> Hasil Pelacakan
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-striped table-hover mb-0">
+                    <tbody>
+                        <tr><td class="fw-bold">Negara</td><td>{{ result.region_code }}</td></tr>
+                        <tr><td class="fw-bold">Lokasi</td><td>{{ result.location }}</td></tr>
+                        <tr><td class="fw-bold">Timezone</td><td>{{ result.timezone }}</td></tr>
+                        <tr><td class="fw-bold">Operator</td><td>{{ result.operator }}</td></tr>
+                        <tr><td class="fw-bold">Tipe</td><td>{{ result.type }}</td></tr>
+                        <tr><td class="fw-bold">Valid</td><td>{{ result.valid }}</td></tr>
+                        <tr><td class="fw-bold">Possible</td><td>{{ result.possible }}</td></tr>
+                        <tr><td class="fw-bold">International</td><td><code>{{ result.international }}</code></td></tr>
+                        <tr><td class="fw-bold">E.164</td><td><code>{{ result.e164 }}</code></td></tr>
+                        <tr><td class="fw-bold">Kode Negara</td><td>{{ result.country_code }}</td></tr>
+                        <tr><td class="fw-bold">Nomor Lokal</td><td>{{ result.national }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

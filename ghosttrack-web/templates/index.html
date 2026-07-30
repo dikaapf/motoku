@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="text-center mb-5">
+    <h1 class="display-4 fw-bold">
+        <i class="bi bi-radioactive text-success"></i> GhostTrack
+    </h1>
+    <p class="lead text-secondary">
+        OSINT Information Gathering Tool — Phone, IP &amp; Username Tracking
+    </p>
+    <hr class="border-success w-25 mx-auto">
+</div>
+
+<div class="row g-4 justify-content-center">
+    <div class="col-md-4">
+        <a href="{{ url_for('phone') }}" class="text-decoration-none">
+            <div class="card card-hover border-success h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-telephone-fill text-success" style="font-size: 3rem;"></i>
+                    <h3 class="card-title mt-3">Phone Tracker</h3>
+                    <p class="card-text text-secondary">
+                        Lacak informasi nomor telepon — operator, lokasi, tipe jalur, timezone, dan validitas.
+                    </p>
+                    <span class="btn btn-outline-success">Mulai <i class="bi bi-arrow-right"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-4">
+        <a href="{{ url_for('ip_track') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-globe2 text-info" style="font-size: 3rem;"></i>
+                    <h3 class="card-title mt-3">IP Tracker</h3>
+                    <p class="card-text text-secondary">
+                        Lacak alamat IP — geolokasi, ISP, ASN, timezone, dan link Google Maps.
+                    </p>
+                    <span class="btn btn-outline-info">Mulai <i class="bi bi-arrow-right"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-4">
+        <a href="{{ url_for('username') }}" class="text-decoration-none">
+            <div class="card card-hover border-warning h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-person-badge-fill text-warning" style="font-size: 3rem;"></i>
+                    <h3 class="card-title mt-3">Username Tracker</h3>
+                    <p class="card-text text-secondary">
+                        Cari username di 20+ platform sosial media — Facebook, Instagram, TikTok, GitHub, dll.
+                    </p>
+                    <span class="btn btn-outline-warning">Mulai <i class="bi bi-arrow-right"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-terminal"></i> CLI Version</h5>
+                <p class="card-text text-secondary">
+                    Ingin pakai versi terminal? Clone repo original GhostTrack:
+                </p>
+                <div class="bg-dark p-3 rounded">
+                    <code class="text-success">
+                        git clone https://github.com/HunxByts/GhostTrack.git<br>
+                        cd GhostTrack<br>
+                        pip install -r requirements.txt<br>
+                        python GhostTR.py
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

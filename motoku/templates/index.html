@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="text-center mb-5">
+    <h1 class="display-4 fw-bold">
+        <i class="bi bi-radioactive text-success"></i> Motoku
+    </h1>
+    <p class="lead text-secondary">
+        OSINT Information Gathering Toolkit — 10 tools dalam satu web app
+    </p>
+    <hr class="border-success w-25 mx-auto">
+</div>
+
+<div class="row g-4">
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('phone') }}" class="text-decoration-none">
+            <div class="card card-hover border-success h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-telephone-fill text-success" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Phone Tracker</h5>
+                    <p class="card-text text-secondary small">Operator, lokasi, timezone, validitas nomor HP</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('ip_track') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-globe2 text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">IP Tracker</h5>
+                    <p class="card-text text-secondary small">Geolokasi, ISP, ASN, Google Maps, deteksi IP sendiri</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('username') }}" class="text-decoration-none">
+            <div class="card card-hover border-warning h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-person-badge-fill text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Username Tracker</h5>
+                    <p class="card-text text-secondary small">Cek 22 platform sosial media (IG, FB, TikTok, GitHub, dll)</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('username_deep') }}" class="text-decoration-none">
+            <div class="card card-hover border-danger h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-person-fill-gear text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Deep Username</h5>
+                    <p class="card-text text-secondary small">Analisa username di 400+ platform (Sherlock) + Instagram (Instaloader)</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('email') }}" class="text-decoration-none">
+            <div class="card card-hover border-danger h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-envelope-fill text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Email OSINT</h5>
+                    <p class="card-text text-secondary small">Reputasi email, breach detection, profil Gravatar</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('domain') }}" class="text-decoration-none">
+            <div class="card card-hover border-primary h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-building text-primary" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Domain WHOIS</h5>
+                    <p class="card-text text-secondary small">Registrar, tanggal kadaluarsa, name server, IP domain</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('dns') }}" class="text-decoration-none">
+            <div class="card card-hover border-secondary h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-diagram-3 text-secondary" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">DNS Lookup</h5>
+                    <p class="card-text text-secondary small">A, AAAA, MX, NS, TXT, CNAME, SOA, SPF, CAA, SRV</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('portscan') }}" class="text-decoration-none">
+            <div class="card card-hover border-danger h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-plug-fill text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Port Scanner</h5>
+                    <p class="card-text text-secondary small">Scan 23 port umum, deteksi service + banner grabbing</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('tech') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-cpu text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Tech Stack</h5>
+                    <p class="card-text text-secondary small">Deteksi CMS, framework, library, server web</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('dorks') }}" class="text-decoration-none">
+            <div class="card card-hover border-success h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-shield-shaded text-success" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Google Dorks</h5>
+                    <p class="card-text text-secondary small">Generate 30+ Google dork queries untuk target domain</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-terminal"></i> CLI Version — GhostTrack Original</h5>
+                <p class="card-text text-secondary">
+                    Ingin pakai versi terminal? Clone repo original GhostTrack:
+                </p>
+                <div class="bg-dark p-3 rounded">
+                    <code class="text-success">
+                        git clone https://github.com/HunxByts/GhostTrack.git<br>
+                        cd GhostTrack<br>
+                        pip install -r requirements.txt<br>
+                        python GhostTR.py
+                    </code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

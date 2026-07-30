@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}DNS Lookup{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-diagram-3 text-secondary"></i> DNS Lookup</h2>
+        <p class="text-secondary">Resolve berbagai record DNS untuk sebuah domain.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="domain" class="form-label">Domain</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="domain" name="domain"
+                                   placeholder="example.com" required
+                                   value="{{ request.form.get('domain', domain) }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-secondary w-100">
+                        <i class="bi bi-search"></i> Resolve DNS
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if results %}
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white"><i class="bi bi-list-check"></i> DNS Records</div>
+            <div class="card-body">
+                {% for rtype, records in results.items() %}
+                {% if records %}
+                <div class="mb-3">
+                    <h6 class="border-bottom pb-1"><code>{{ rtype }}</code></h6>
+                    <ul class="list-unstyled mb-0">
+                        {% for r in records %}
+                        <li><code>{{ r }}</code></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% set has_any = results.values()|list|select('!=', [])|list %}
+                {% if not has_any %}
+                <p class="text-secondary mb-0">Tidak ada record DNS yang ditemukan untuk domain ini.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

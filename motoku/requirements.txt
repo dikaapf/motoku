@@ -1,0 +1,6 @@
+flask>=3.0
+requests>=2.31
+phonenumbers>=8.13
+python-whois>=0.9
+python-Wappalyzer>=0.3
+dnspython>=2.0
