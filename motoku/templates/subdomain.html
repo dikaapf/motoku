@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Subdomain Enumeration{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-diagram-3-fill text-warning"></i> Subdomain Enumeration</h2>
+        <p class="text-secondary">Temukan subdomain dari suatu domain via Certificate Transparency (crt.sh) + DNS brute force.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-warning">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="domain" class="form-label">Domain</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="domain" name="domain"
+                                   placeholder="example.com" required
+                                   value="{{ request.form.get('domain', domain) }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="bi bi-search"></i> Enumerate Subdomain
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger mt-3"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-7">
+        {% if data %}
+        <div class="card border-warning mb-3">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check"></i> Hasil Enumeration</span>
+                <span class="badge bg-dark text-warning">{{ data.total }} subdomain ditemukan</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 300px;">
+                    <table class="table table-dark table-striped table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Subdomain</th>
+                                <th>Sumber</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in data.subdomains %}
+                            <tr>
+                                <td><code>{{ s.name }}</code></td>
+                                <td><span class="badge bg-secondary">{{ s.source }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if data.mx_records or data.ns_records %}
+        <div class="row g-2 mb-3">
+            {% if data.mx_records %}
+            <div class="col-md-6">
+                <div class="card border-danger h-100">
+                    <div class="card-header bg-danger text-white py-1"><small><i class="bi bi-envelope"></i> MX Records</small></div>
+                    <div class="card-body py-1">
+                        {% for mx in data.mx_records %}
+                        <code class="small">{{ mx.host }} (priority {{ mx.priority }})</code><br>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if data.ns_records %}
+            <div class="col-md-6">
+                <div class="card border-info h-100">
+                    <div class="card-header bg-info text-dark py-1"><small><i class="bi bi-server"></i> NS Records</small></div>
+                    <div class="card-body py-1">
+                        {% for ns in data.ns_records %}
+                        <code class="small">{{ ns }}</code><br>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-graph-up"></i> Visual Mapping
+            </div>
+            <div class="card-body p-0">
+                <div id="subdomain-graph" style="width:100%;height:500px;background:#0a0e0a;"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if data and data.graph %}
+<script>
+    window.__GRAPH_DATA = {{ data.graph | tojson | safe }};
+</script>
+<script src="{{ url_for('static', filename='subdomain.js') }}"></script>
+{% endif %}
+{% endblock %}

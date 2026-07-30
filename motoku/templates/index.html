@@ -6,7 +6,7 @@
         <i class="bi bi-radioactive text-success"></i> Motoku
     </h1>
     <p class="lead text-secondary">
-        OSINT Information Gathering Toolkit — 10 tools dalam satu web app
+        OSINT Information Gathering Toolkit — 15 tools dalam satu web app
     </p>
     <hr class="border-success w-25 mx-auto">
 </div>
@@ -85,8 +85,20 @@
     </div>
 
     <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('subdomain') }}" class="text-decoration-none">
+            <div class="card card-hover border-warning h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-diagram-3-fill text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Subdomain Enum</h5>
+                    <p class="card-text text-secondary small">Enum subdomain via crt.sh + DNS brute force + peta visual interaktif</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
         <a href="{{ url_for('dns') }}" class="text-decoration-none">
-            <div class="card card-hover border-secondary h-100">
+            <div class="card card-hover h-100">
                 <div class="card-body text-center p-4">
                     <i class="bi bi-diagram-3 text-secondary" style="font-size: 2.5rem;"></i>
                     <h5 class="card-title mt-2">DNS Lookup</h5>
@@ -121,6 +133,18 @@
     </div>
 
     <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('search_person') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-person-search text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Search Person</h5>
+                    <p class="card-text text-secondary small">Cari nama seseorang di 8 search engine (Google, Bing, DuckDuckGo, dll)</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
         <a href="{{ url_for('dorks') }}" class="text-decoration-none">
             <div class="card card-hover border-success h-100">
                 <div class="card-body text-center p-4">
@@ -131,26 +155,43 @@
             </div>
         </a>
     </div>
-</div>
 
-<div class="row mt-5">
-    <div class="col-12">
-        <div class="card border-secondary">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-terminal"></i> CLI Version — GhostTrack Original</h5>
-                <p class="card-text text-secondary">
-                    Ingin pakai versi terminal? Clone repo original GhostTrack:
-                </p>
-                <div class="bg-dark p-3 rounded">
-                    <code class="text-success">
-                        git clone https://github.com/HunxByts/GhostTrack.git<br>
-                        cd GhostTrack<br>
-                        pip install -r requirements.txt<br>
-                        python GhostTR.py
-                    </code>
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('location_tracker') }}" class="text-decoration-none">
+            <div class="card card-hover border-danger h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-geo-alt-fill text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Location Tracker</h5>
+                    <p class="card-text text-secondary small">Buat link pelacak lokasi via GPS, share ke target, dan lihat hasilnya</p>
                 </div>
             </div>
-        </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('cctv') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-camera-video-fill text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">CCTV Finder</h5>
+                    <p class="card-text text-secondary small">Jelajahi CCTV publik Indonesia & scan IP untuk camera terbuka</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('flight_radar') }}" class="text-decoration-none">
+            <div class="card card-hover border-primary h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-airplane-engines text-primary" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Flight Radar</h5>
+                    <p class="card-text text-secondary small">Pemantauan pesawat real-time via OpenSky Network — peta live, filter, statistik</p>
+                </div>
+            </div>
+        </a>
     </div>
 </div>
+
+
 {% endblock %}

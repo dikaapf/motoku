@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Search Person{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-person-search text-info"></i> Search Person</h2>
+        <p class="text-secondary">Cari nama seseorang di berbagai search engine pilihan Anda.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card border-info">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nama / Keyword</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="name" name="name"
+                                   placeholder="John Doe" required
+                                   value="{{ request.form.get('name', name) }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Pilih Search Engine</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for engine in search_engines %}
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="engines"
+                                       id="engine_{{ engine.id }}" value="{{ engine.id }}"
+                                       {% if engine.id in selected_engines %}checked{% endif %}>
+                                <label class="form-check-label" for="engine_{{ engine.id }}">
+                                    <i class="bi {{ engine.icon }} {{ engine.color }}"></i> {{ engine.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="selectAll">
+                        <label class="form-check-label" for="selectAll">Pilih Semua</label>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="bi bi-search"></i> Cari
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card border-secondary mt-3">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Tentang Fitur Ini</h6>
+                <small class="text-secondary">
+                    Masukkan nama seseorang, centang search engine yang diinginkan,
+                    lalu klik Cari. Setiap link akan membuka hasil pencarian di tab baru.
+                    <br><br>
+                    <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Gunakan dengan bijak dan bertanggung jawab.</span>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+
+        {% if search_results %}
+        <div class="card border-info mb-3">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-ul"></i> Hasil Pencarian</span>
+                <small><i class="bi bi-book"></i> Wikipedia</small>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for r in search_results %}
+                    <a href="{{ r.url }}" target="_blank" rel="noopener" class="list-group-item list-group-item-action bg-transparent text-white">
+                        <div class="d-flex w-100 justify-content-between">
+                            <strong class="mb-1 text-info">{{ r.title }}</strong>
+                        </div>
+                        <small class="text-secondary" style="word-break: break-all;">{{ r.url[:80] }}{% if r.url|length > 80 %}...{% endif %}</small>
+                        {% if r.snippet %}
+                        <p class="mb-0 text-secondary small mt-1">{{ r.snippet[:200] }}{% if r.snippet|length > 200 %}...{% endif %}</p>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% elif results %}
+        <div class="alert alert-info"><i class="bi bi-info-circle"></i> Gagal mengambil hasil pencarian. Klik engine di bawah untuk mencari di tab baru.</div>
+        {% endif %}
+
+        {% if results %}
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0"><i class="bi bi-search"></i> Buka di Search Engine</h6>
+            <span class="badge bg-info">{{ results|length }} engine</span>
+        </div>
+        <div class="row g-2">
+            {% for item in results %}
+            <div class="col-md-6">
+                <a href="{{ item.url }}" target="_blank" rel="noopener"
+                   class="text-decoration-none">
+                    <div class="card card-hover {{ item.border }} h-100">
+                        <div class="card-body d-flex align-items-center py-2">
+                            <i class="bi {{ item.icon }} {{ item.color }}" style="font-size: 1.5rem;"></i>
+                            <div class="ms-2">
+                                <small class="fw-bold">{{ item.name }}</small>
+                                <small class="text-secondary d-block">
+                                    <i class="bi bi-box-arrow-up-right"></i> Buka
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    document.querySelectorAll('input[name="engines"]').forEach(cb => cb.checked = this.checked);
+});
+</script>
+{% endblock %}

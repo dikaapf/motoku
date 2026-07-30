@@ -82,3 +82,30 @@ code {
 .table > :not(caption) > * > * {
     border-bottom-color: #1a2a1a;
 }
+
+#subdomain-graph {
+    border-radius: 0 0 10px 10px;
+    min-height: 500px;
+}
+
+#subdomain-graph .vis-network:focus {
+    outline: none;
+}
+
+.vis-manipulation {
+    background: transparent !important;
+}
+
+.vis-navigation {
+    filter: invert(0.8);
+}
+
+.vis-tooltip {
+    background-color: #1a1e1a !important;
+    border: 1px solid #00ff88 !important;
+    color: #cccccc !important;
+    font-family: monospace !important;
+    border-radius: 5px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+}

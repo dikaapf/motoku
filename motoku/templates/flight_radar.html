@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Flight Radar{% endblock %}
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <h2><i class="bi bi-airplane-engines text-primary"></i> Flight Radar — Live</h2>
+        <p class="text-secondary">Pemantauan pesawat real-time via <a href="https://opensky-network.org" target="_blank" rel="noopener" class="text-info">OpenSky Network</a></p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-9 mb-3">
+        <div class="card border-primary">
+            <div class="card-body p-0">
+                <div id="map" style="height: 600px; border-radius: var(--bs-card-border-radius);"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 mb-3">
+        <div class="card border-primary h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart"></i> Statistik</span>
+                <button class="btn btn-sm btn-outline-light" onclick="refreshFlights()" id="refreshBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span>Total Pesawat</span>
+                        <strong id="statTotal" class="text-primary">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Terbang</span>
+                        <strong id="statAirborne" class="text-success">0</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Di Darat</span>
+                        <strong id="statGround" class="text-warning">0</strong>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label small"><i class="bi bi-search"></i> Cari Callsign</label>
+                    <input type="text" class="form-control form-control-sm" id="filterInput" placeholder="Contoh: LNI, GIA, CTV..." oninput="filterFlights()">
+                </div>
+                <hr>
+                <h6 class="small"><i class="bi bi-globe"></i> Negara Terbanyak</h6>
+                <div id="countryList" class="small">
+                    <div class="text-secondary">Memuat...</div>
+                </div>
+                <hr>
+                <div class="small text-secondary text-center" id="updateInfo">
+                    <i class="bi bi-clock"></i> Update: <span id="updateTime">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-secondary">
+            <div class="card-body py-2">
+                <small class="text-secondary">
+                    <i class="bi bi-info-circle"></i>
+                    Warna marker berdasarkan ketinggian:
+                    <span class="text-success">● &lt;3.000m</span>
+                    <span class="text-warning mx-2">● 3.000–9.000m</span>
+                    <span class="text-danger">● &gt;9.000m</span>
+                    &nbsp;|&nbsp;
+                    Arah marker = heading pesawat
+                    &nbsp;|&nbsp;
+                    Auto-refresh tiap 15 detik
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map = L.map('map').setView([-2.5, 118], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+}).addTo(map);
+
+var markers = {};
+var refreshInterval = null;
+var flightsData = [];
+
+function altitudeColor(alt) {
+    if (alt == null) return '#6c757d';
+    if (alt < 3000) return '#28a745';
+    if (alt < 9000) return '#ffc107';
+    return '#dc3545';
+}
+
+function createIcon(heading, color) {
+    var deg = heading != null ? heading : 0;
+    return L.divIcon({
+        className: 'flight-marker',
+        html: '<div style="transform:rotate(' + deg + 'deg);font-size:18px;color:' + color + ';text-shadow:0 0 4px rgba(0,0,0,0.8),0 0 8px rgba(0,0,0,0.6);"><i class="bi bi-airplane-fill"></i></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+    });
+}
+
+function updateMap(flights) {
+    flightsData = flights;
+    var seen = {};
+
+    flights.forEach(function(f) {
+        if (f.lat == null || f.lon == null) return;
+        if (!f.on_ground && f.velocity != null && f.velocity < 10) return;
+        var id = f.icao24;
+        seen[id] = true;
+        var color = altitudeColor(f.baro_altitude || f.geo_altitude);
+        var callsign = f.callsign || 'N/A';
+
+        if (markers[id]) {
+            markers[id].setLatLng([f.lat, f.lon]);
+            markers[id].setIcon(createIcon(f.heading, color));
+        } else {
+            var marker = L.marker([f.lat, f.lon], {
+                icon: createIcon(f.heading, color),
+                zIndexOffset: f.on_ground ? -1000 : 1000,
+            }).addTo(map);
+
+            var altText = '';
+            var alt = f.baro_altitude || f.geo_altitude;
+            if (alt != null) altText = '<br>Altitude: <strong>' + alt.toFixed(0) + '</strong> m (' + (alt * 3.28084).toFixed(0) + ' ft)';
+
+            var velText = '';
+            if (f.velocity != null) velText = '<br>Speed: <strong>' + (f.velocity * 1.944).toFixed(0) + '</strong> kt (' + f.velocity.toFixed(0) + ' m/s)';
+
+            var headText = '';
+            if (f.heading != null) headText = '<br>Heading: <strong>' + f.heading.toFixed(0) + '°</strong>';
+
+            var vrText = '';
+            if (f.vertical_rate != null) vrText = '<br>Vertical: <strong>' + f.vertical_rate.toFixed(1) + '</strong> m/s';
+
+            marker.bindPopup(
+                '<div class="flight-popup">' +
+                '<h6 style="margin-bottom:4px">' + callsign + '</h6>' +
+                '<small>' +
+                '<span class="badge bg-' + (f.on_ground ? 'warning' : 'success') + '" style="font-size:10px">' + (f.on_ground ? 'ON GROUND' : 'AIRBORNE') + '</span>' +
+                '<br>Negara: ' + (f.origin_country || '-') +
+                '<br>ICAO: <code>' + f.icao24 + '</code>' +
+                altText +
+                velText +
+                headText +
+                vrText +
+                '</small>' +
+                '</div>'
+            );
+
+            markers[id] = marker;
+        }
+    });
+
+    for (var id in markers) {
+        if (!seen[id]) {
+            map.removeLayer(markers[id]);
+            delete markers[id];
+        }
+    }
+
+    updateStats(flights);
+    applyFilter();
+}
+
+function updateStats(flights) {
+    var total = flights.length;
+    var airborne = flights.filter(function(f) { return !f.on_ground; }).length;
+    var onGround = total - airborne;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statAirborne').textContent = airborne;
+    document.getElementById('statGround').textContent = onGround;
+
+    var countries = {};
+    flights.forEach(function(f) {
+        var c = f.origin_country || 'Unknown';
+        countries[c] = (countries[c] || 0) + 1;
+    });
+    var sorted = Object.entries(countries).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+    var html = '';
+    sorted.forEach(function(c) {
+        html += '<div class="d-flex justify-content-between"><span>' + c[0] + '</span><strong class="text-primary">' + c[1] + '</strong></div>';
+    });
+    document.getElementById('countryList').innerHTML = html || '<div class="text-secondary">Tidak ada data</div>';
+
+    var now = new Date();
+    document.getElementById('updateTime').textContent = now.toLocaleTimeString('id-ID');
+}
+
+function filterFlights() {
+    var q = document.getElementById('filterInput').value.trim().toUpperCase();
+    if (!q) {
+        for (var id in markers) {
+            if (markers[id]._latlng) map.addLayer(markers[id]);
+        }
+        return;
+    }
+    for (var id in markers) {
+        var flight = flightsData.find(function(f) { return f.icao24 === id; });
+        if (flight && flight.callsign && flight.callsign.includes(q)) {
+            map.addLayer(markers[id]);
+        } else {
+            map.removeLayer(markers[id]);
+        }
+    }
+}
+
+function applyFilter() {
+    filterFlights();
+}
+
+function refreshFlights() {
+    var btn = document.getElementById('refreshBtn');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    btn.disabled = true;
+
+    var bounds = map.getBounds();
+    var params = new URLSearchParams({
+        lamin: bounds.getSouth(),
+        lomin: bounds.getWest(),
+        lamax: bounds.getNorth(),
+        lomax: bounds.getEast(),
+    });
+
+    fetch('/api/flights?' + params.toString())
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                updateMap(data.flights);
+            }
+        })
+        .catch(function(err) {
+            console.error('Flight refresh error:', err);
+        })
+        .finally(function() {
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+            btn.disabled = false;
+        });
+}
+
+map.on('moveend', function() {
+    refreshFlights();
+    resetAutoRefresh();
+});
+
+map.on('zoomend', function() {
+    refreshFlights();
+    resetAutoRefresh();
+});
+
+function resetAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(refreshFlights, 15000);
+}
+
+refreshFlights();
+resetAutoRefresh();
+</script>
+<style>
+.flight-marker {
+    background: none !important;
+    border: none !important;
+}
+.flight-popup h6 {
+    color: #0dcaf0;
+}
+.leaflet-popup-content-wrapper {
+    background: #1a1f2e !important;
+    color: #e0e0e0 !important;
+    border: 1px solid #0dcaf0;
+}
+.leaflet-popup-tip {
+    background: #1a1f2e !important;
+}
+</style>
+{% endblock %}
