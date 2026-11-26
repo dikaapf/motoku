@@ -14,6 +14,10 @@ DOMAIN_RE = re.compile(
 )
 HASH_RE = re.compile(r'^(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$')
 CVE_RE = re.compile(r'^CVE-\d{4}-\d{4,}$', re.I)
+COORD_RE = re.compile(r'^\s*-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}\s*$')
+GMAPS_RE = re.compile(r'google\.[a-z.]+/maps/.*@-?\d+\.\d+,-?\d+\.\d+')
+LEI_RE = re.compile(r'^[A-Z0-9]{18}[0-9]{2}$')
+IMAGE_EXT_RE = re.compile(r'\.(jpe?g|png|gif|webp|tiff?|heic|bmp)$', re.I)
 PHONE_RE = re.compile(r'^\+?[\d\s\-().]{7,20}$')
 USERNAME_RE = re.compile(r'^@?[A-Za-z0-9._\-]{2,40}$')
 
@@ -60,14 +64,27 @@ ROUTES = {
         ('dorks', 'Google Dorks', 'target'),
     ],
     'phone': [
-        ('phone', 'Phone Tracker', 'number'),
+        ('phone', 'Phone Intel & Footprint', 'number'),
     ],
     'username': [
+        ('social', 'Profil Sosial (API)', 'username'),
         ('username', 'Username (WhatsMyName)', 'username'),
         ('username_deep', 'Deep Username (Sherlock)', 'username'),
     ],
     'name': [
         ('search_person', 'Search Person', 'name'),
+        ('corporate', 'Korporasi & Akademik', 'query'),
+        ('geo', 'Geo (sebagai nama tempat)', 'location'),
+    ],
+    'coords': [
+        ('geo', 'Geo: alamat, POI, matahari', 'location'),
+    ],
+    'image_url': [
+        ('image', 'Image Forensics (EXIF, OCR)', 'url'),
+        ('intel', 'Threat Intel (URL)', 'indicator'),
+    ],
+    'lei': [
+        ('corporate', 'GLEIF LEI', 'query'),
     ],
 }
 
@@ -75,6 +92,9 @@ TYPE_LABELS = {
     'email': 'Email',
     'ip': 'Alamat IP',
     'hash': 'Hash file',
+    'coords': 'Koordinat',
+    'image_url': 'URL gambar',
+    'lei': 'Kode LEI',
     'cve': 'CVE',
     'url': 'URL',
     'domain': 'Domain',
@@ -96,6 +116,12 @@ def detect(query):
     if CVE_RE.match(q):
         return 'cve', q.upper()
 
+    if COORD_RE.match(q) or GMAPS_RE.search(q):
+        return 'coords', q
+
+    if LEI_RE.match(q):
+        return 'lei', q.upper()
+
     if HASH_RE.match(q):
         return 'hash', q.lower()
 
@@ -107,6 +133,8 @@ def detect(query):
     if re.match(r'^https?://', q, re.I):
         parsed = urlparse(q)
         if parsed.hostname:
+            if IMAGE_EXT_RE.search(parsed.path):
+                return 'image_url', q
             return 'url', q
 
     if DOMAIN_RE.match(q) and not q.replace('.', '').isdigit():

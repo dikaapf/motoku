@@ -35,6 +35,7 @@ from tools import (
     archive_tool,
     cctv_tool,
     cloud_tool,
+    corporate_tool,
     cve_tool,
     deep_username,
     dns_security,
@@ -43,11 +44,14 @@ from tools import (
     dorks_tool,
     email_tool,
     flight_tool,
+    geo_tool,
     http_probe,
+    image_tool,
     ip_tool,
     phone_tool,
     portscan_tool,
     search_tool,
+    social_tool,
     subdomain_tool,
     tech_tool,
     threat_intel,
@@ -490,6 +494,86 @@ def recon_report(job_id):
 @app.route('/screenshots/<path:name>')
 def screenshot_file(name):
     return send_from_directory(http_probe.SCREENSHOT_DIR, name, mimetype='image/png')
+
+
+# ── IMAGE FORENSICS ──
+@app.route('/image', methods=['GET', 'POST'])
+def image():
+    report = error = None
+    if request.method == 'POST':
+        upload = request.files.get('image')
+        url = request.form.get('url', '').strip()
+        try:
+            if upload and upload.filename:
+                report = image_tool.analyse(upload.read(), filename=upload.filename,
+                                            image_url=url or None)
+            elif url:
+                report = image_tool.analyse(image_tool.fetch_url(url), filename=url.rsplit('/', 1)[-1][:80],
+                                            image_url=url)
+            else:
+                error = 'Unggah gambar atau masukkan URL gambar'
+        except ValueError as e:
+            error = str(e)
+        except Exception as e:
+            error = f'Gagal memproses gambar: {type(e).__name__}'
+        if report and report['gps']:
+            try:
+                report['gps']['address'] = geo_tool.reverse_geocode(report['gps']['lat'], report['gps']['lng'])
+            except Exception:
+                report['gps']['address'] = None
+    return render_template('image.html', report=report, error=error,
+                           ocr_available=bool(image_tool.ocr_backend()))
+
+
+@app.errorhandler(413)
+def too_large(_e):
+    return render_template('image.html', report=None, ocr_available=bool(image_tool.ocr_backend()),
+                           error='File terlalu besar (maks %d MB)' % (app.config['MAX_CONTENT_LENGTH'] // 1048576)), 413
+
+
+# ── GEO ──
+@app.route('/geo', methods=['GET', 'POST'])
+def geo():
+    report = error = None
+    if request.method == 'POST':
+        location = request.form.get('location', '').strip()
+        when_raw = request.form.get('when', '').strip()
+        tz_raw = request.form.get('tz', '').strip()
+        try:
+            when = datetime.strptime(when_raw, '%Y-%m-%dT%H:%M') if when_raw else None
+            tz_offset = float(tz_raw) if tz_raw else None
+            radius = int(request.form.get('radius', '500') or 500)
+            if not location:
+                raise ValueError('Masukkan koordinat atau nama tempat')
+            report = geo_tool.investigate(location, when=when, tz_offset=tz_offset, radius=radius)
+        except ValueError as e:
+            error = str(e)
+    return render_template('geo.html', report=report, error=error)
+
+
+# ── CORPORATE & ACADEMIC ──
+@app.route('/corporate', methods=['GET', 'POST'])
+def corporate():
+    result = error = None
+    if request.method == 'POST':
+        kinds = request.form.getlist('kinds') or ['company', 'person']
+        try:
+            result = corporate_tool.search(request.form.get('query', ''), kinds=tuple(kinds))
+        except ValueError as e:
+            error = str(e)
+    return render_template('corporate.html', result=result, error=error)
+
+
+# ── SOCIAL PROFILES ──
+@app.route('/social', methods=['GET', 'POST'])
+def social():
+    result = error = None
+    if request.method == 'POST':
+        try:
+            result = social_tool.lookup(request.form.get('username', ''))
+        except ValueError as e:
+            error = str(e)
+    return render_template('social.html', result=result, error=error)
 
 
 # ── THREAT INTEL ──

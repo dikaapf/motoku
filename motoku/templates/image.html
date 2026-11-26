@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, copy_btn %}
+{% block title %}Image Forensics{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-image-fill text-info"></i> Image Forensics</h2>
+    <p class="text-secondary">EXIF &amp; GPS, metadata lengkap (exiftool), hash kriptografis &amp; perseptual, OCR{% if not ocr_available %} <small>(Tesseract belum terpasang)</small>{% endif %}, dan reverse image search. File unggahan diproses di memori dan tidak disimpan.</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-info"><div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="url" class="form-label">URL gambar</label>
+                <input type="url" class="form-control mb-2" id="url" name="url" placeholder="https://…/foto.jpg" value="{{ request.form.get('url', '') }}">
+                <div class="text-center text-secondary small my-2">atau</div>
+                <label for="image" class="form-label">Unggah file (maks 16 MB)</label>
+                <input type="file" class="form-control mb-3" id="image" name="image" accept="image/*">
+                <button type="submit" class="btn btn-info w-100"><i class="bi bi-search"></i> Analisa</button>
+            </form>
+            <small class="text-secondary d-block mt-2">Tips: foto asli dari kamera/HP biasanya masih memuat EXIF. Gambar dari WhatsApp/Instagram/Facebook umumnya sudah dibersihkan.</small>
+        </div></div>
+        {% if report %}
+        <div class="card border-secondary mt-3"><div class="card-body small">
+            <h6><i class="bi bi-hash"></i> Hash</h6>
+            {% for k, v in report.hashes.items() %}<div class="text-break"><span class="text-secondary">{{ k }}</span> <code>{{ v }}</code>{{ copy_btn(v) }}</div>{% endfor %}
+            <a class="btn btn-sm btn-outline-danger mt-2" href="{{ url_for('intel', q=report.hashes.sha256, auto=1) }}">Cek SHA256 di Threat Intel</a>
+        </div></div>
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if report %}
+        {{ result_data(report) }}
+        {% for w in report.warnings %}<div class="alert alert-{{ 'danger' if 'GPS' in w else 'warning' }} py-2 small mb-2"><i class="bi bi-exclamation-triangle"></i> {{ w }}</div>{% endfor %}
+
+        {% if report.gps %}
+        {% call result_card('Lokasi GPS', 'bi-geo-alt-fill', 'danger', toolbar=False) %}
+        <p class="mb-1"><code>{{ report.gps.lat }}, {{ report.gps.lng }}</code>{{ copy_btn(report.gps.lat ~ ', ' ~ report.gps.lng) }}
+            {% if report.gps.altitude is not none %} · ketinggian {{ report.gps.altitude }} m{% endif %}
+            {% if report.gps.direction is not none %} · arah kamera {{ report.gps.direction|round(0) }}°{% endif %}</p>
+        {% if report.gps.address %}<p class="small text-secondary mb-2">{{ report.gps.address.display_name }}</p>{% endif %}
+        {% if report.gps.timestamp %}<p class="small mb-2">Waktu GPS (UTC): {{ report.gps.timestamp }}</p>{% endif %}
+        <a class="btn btn-sm btn-outline-danger" href="{{ url_for('geo', q=report.gps.lat ~ ', ' ~ report.gps.lng, auto=1) }}"><i class="bi bi-map"></i> Analisa lokasi</a>
+        <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat={{ report.gps.lat }}&mlon={{ report.gps.lng }}#map=17/{{ report.gps.lat }}/{{ report.gps.lng }}">OpenStreetMap</a>
+        {% endcall %}
+        {% endif %}
+
+        {% call result_card((report.filename or 'Gambar') ~ ' — ' ~ report.info.format ~ ' ' ~ report.info.width ~ '×' ~ report.info.height, 'bi-card-list', 'info', 'image-' ~ report.hashes.sha256[:12]) %}
+        <p class="small text-secondary">{{ (report.size_bytes / 1024)|round(1) }} KB · mode {{ report.info.mode }}{% if report.info.frames > 1 %} · {{ report.info.frames }} frame{% endif %}</p>
+        {% if report.exif_key %}
+        <table class="table table-dark table-sm table-striped mb-2"><tbody>
+            {% for k, v in report.exif_key.items() %}<tr><td class="fw-bold">{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}
+        </tbody></table>
+        {% endif %}
+        {% if report.exiftool %}
+        <details class="small"><summary class="text-secondary">Semua metadata exiftool ({{ report.exiftool|length }} tag)</summary>
+            <table class="table table-dark table-sm mb-0"><tbody>{% for k, v in report.exiftool.items() %}<tr><td class="text-nowrap">{{ k }}</td><td class="text-break">{{ v }}</td></tr>{% endfor %}</tbody></table>
+        </details>
+        {% elif report.exif_all %}
+        <details class="small"><summary class="text-secondary">Semua EXIF ({{ report.exif_all|length }} tag)</summary>
+            <table class="table table-dark table-sm mb-0"><tbody>{% for k, v in report.exif_all.items() %}<tr><td>{{ k }}</td><td class="text-break">{{ v }}</td></tr>{% endfor %}</tbody></table>
+        </details>
+        {% endif %}
+        {% endcall %}
+
+        {% call result_card('OCR', 'bi-fonts', 'secondary', toolbar=False) %}
+        {% if report.ocr %}<pre class="job-log mb-0">{{ report.ocr }}</pre>{{ copy_btn(report.ocr) }}
+        {% elif report.ocr_available %}<p class="text-secondary mb-0">Tidak ada teks terbaca.</p>
+        {% else %}<p class="text-secondary mb-0">Pasang Tesseract (<code>apt install tesseract-ocr tesseract-ocr-ind</code>) untuk mengaktifkan OCR. Image Docker sudah menyertakannya.</p>{% endif %}
+        {% endcall %}
+
+        {% call result_card('Reverse image search', 'bi-images', 'warning', toolbar=False) %}
+        <div class="d-flex flex-wrap gap-2">
+            {% for l in report.reverse_search %}<a class="btn btn-sm btn-outline-warning" target="_blank" rel="noopener noreferrer" href="{{ l.url }}">{{ l.label }}{% if not l.direct %} <small>(unggah)</small>{% endif %}</a>{% endfor %}
+        </div>
+        {% if not report.image_url %}<small class="text-secondary d-block mt-2">Untuk file unggahan, mesin pencari membutuhkan unggah manual. Pakai URL gambar agar tautan langsung berisi gambar.</small>{% endif %}
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

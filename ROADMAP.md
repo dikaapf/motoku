@@ -13,7 +13,7 @@ Satuan: 1 PD ≈ 6–8 jam efektif. Solo full-time ≈ 4–5 bulan; 2 dev parale
 | **S1** ✅ | Core OSINT upgrade | 1 sprint | ~13 PD | S0 |
 | **S2** ✅ | Infra recon (domain/IP) | 1.5 sprint | ~16.5 PD | S0, S1 |
 | **S3** ✅ | Threat intel & enrichment | 1.5 sprint | ~14.5 PD | S2 |
-| **S4** | People, image, geo | 1.5 sprint | ~12.5 PD | S1 |
+| **S4** ✅ | People, image, geo | 1.5 sprint | ~12.5 PD | S1 |
 | **S5** | Case management & report | 2 sprint | ~19.5 PD | S2, S4 |
 | **S6** | Polish & scale (opsional) | 1 sprint | ~9 PD | S5 |
 | **Total** | | **~9.5 sprint** | **~95 PD** | |
@@ -112,6 +112,11 @@ GitHub secret scan dengan masking, dashboard `/providers`. Recon pipeline diperk
 | 4.5 | Social API: GitHub, Reddit, Mastodon, Bluesky, Telegram, TikTok | 3 |
 
 **DoD S4:** modul people/image/geo terintegrasi ke unified search.
+
+**Status S4 (2026-11-27): selesai.** Catatan desain: cek WA/Telegram dibuat sebagai tautan manual
+(bukan enumerasi otomatis — melanggar ToS & rawan penyalahgunaan). AHU/OSS tidak punya API publik →
+tautan registri; Scholar diganti OpenAlex (API resmi). Reddit butuh app OAuth; TikTok best-effort (scraping).
+Test di `tests/test_s4.py`.
 
 ---
 

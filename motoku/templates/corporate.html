@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, copy_btn %}
+{% block title %}Korporasi &amp; Akademik{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-building-fill text-primary"></i> Korporasi &amp; Akademik</h2>
+    <p class="text-secondary">Badan hukum via GLEIF (LEI) dan OpenCorporates; peneliti via ORCID dan OpenAlex; plus tautan registri Indonesia (AHU, OSS, IDX, putusan MA).</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-primary"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="query" class="form-label">Nama perusahaan / orang / LEI</label>
+                <input type="text" class="form-control form-control-lg mb-2" id="query" name="query" required placeholder="PT Contoh Indonesia" value="{{ request.form.get('query', '') }}">
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="kinds" value="company" id="k-co" checked><label class="form-check-label" for="k-co">Perusahaan</label></div>
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="kinds" value="person" id="k-pe" checked><label class="form-check-label" for="k-pe">Peneliti / akademisi</label></div>
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Cari</button>
+            </form>
+        </div></div>
+        {% if result %}
+        <div class="card border-secondary mt-3"><div class="card-body small">
+            <h6>Registri &amp; sumber lain</h6>
+            <ul class="list-unstyled mb-0">{% for l in result.links %}<li class="mb-1"><a class="text-info" target="_blank" rel="noopener noreferrer" href="{{ l.url }}">{{ l.label }}</a>{% if l.note %} <span class="text-secondary">— {{ l.note }}</span>{% endif %}</li>{% endfor %}</ul>
+        </div></div>
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if result %}
+        {{ result_data(result) }}
+        {% set r = result.results %}
+        {% macro status_line(src) %}{% if src.status == 'no_key' %}<p class="text-secondary small mb-0">{{ src.message }}</p>{% elif src.status == 'error' %}<p class="text-danger small mb-0">{{ src.message }}</p>{% elif not src['items'] %}<p class="text-secondary small mb-0">Tidak ada hasil.</p>{% endif %}{% endmacro %}
+
+        {% if r.gleif %}
+        {% call result_card('GLEIF — Legal Entity Identifier (' ~ r.gleif['items']|length ~ ')', 'bi-bank', 'primary', 'corporate-' ~ result.query, 'results.gleif.items') %}
+        {{ status_line(r.gleif) }}
+        {% for c in r.gleif['items'] %}
+        <div class="border-bottom border-secondary pb-2 mb-2">
+            <strong>{{ c.name }}</strong> <span class="badge bg-{{ 'success' if c.status == 'ACTIVE' else 'secondary' }}">{{ c.status }}</span>
+            <div class="small">LEI <a class="text-info" href="{{ c.url }}" target="_blank" rel="noopener">{{ c.lei }}</a>{{ copy_btn(c.lei) }} · {{ c.jurisdiction }} · No. registrasi {{ c.registered_as or '-' }}</div>
+            <div class="small text-secondary">{{ c.legal_address }}</div>
+            {% if c.hq_address and c.hq_address != c.legal_address %}<div class="small text-secondary">HQ: {{ c.hq_address }}</div>{% endif %}
+            <div class="small text-secondary">LEI terbit {{ c.registered }} · status {{ c.registration_status }} · renewal {{ c.next_renewal }}</div>
+        </div>
+        {% endfor %}
+        {% endcall %}
+        {% endif %}
+
+        {% if r.opencorporates %}
+        {% call result_card('OpenCorporates', 'bi-buildings', 'secondary', toolbar=False) %}
+        {{ status_line(r.opencorporates) }}
+        {% for c in r.opencorporates['items'] %}<div class="small mb-1"><a class="text-info" href="{{ c.url }}" target="_blank" rel="noopener">{{ c.name }}</a> · {{ c.jurisdiction }} · {{ c.number }} · {{ c.status or '-' }} · {{ c.incorporated or '' }}</div>{% endfor %}
+        {% endcall %}
+        {% endif %}
+
+        {% if r.openalex %}
+        {% call result_card('OpenAlex — penulis (' ~ r.openalex['items']|length ~ ')', 'bi-mortarboard', 'warning', toolbar=False) %}
+        {{ status_line(r.openalex) }}
+        {% for a in r.openalex['items'] %}
+        <div class="small mb-2"><a class="text-warning" href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>
+            · {{ a.institution or '-' }}{% if a.country %} ({{ a.country }}){% endif %} · {{ a.works }} karya · {{ a.citations }} sitasi · h-index {{ a.h_index }}
+            {% if a.orcid %}· <a class="text-success" href="{{ a.orcid }}" target="_blank" rel="noopener">ORCID</a>{% endif %}
+            {% if a.topics %}<div class="text-secondary">{{ a.topics|join(', ') }}</div>{% endif %}</div>
+        {% endfor %}
+        {% endcall %}
+        {% endif %}
+
+        {% if r.orcid %}
+        {% call result_card('ORCID (' ~ r.orcid['items']|length ~ ')', 'bi-person-vcard', 'success', toolbar=False) %}
+        {{ status_line(r.orcid) }}
+        {% for o in r.orcid['items'] %}<div class="small mb-1"><a class="text-success" href="{{ o.url }}" target="_blank" rel="noopener">{{ o.name or o.orcid }}</a> <code>{{ o.orcid }}</code>{% if o.institutions %} — <span class="text-secondary">{{ o.institutions|join('; ') }}</span>{% endif %}</div>{% endfor %}
+        {% endcall %}
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

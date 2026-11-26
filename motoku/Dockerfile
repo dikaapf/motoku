@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         whois \
         nmap \
         chromium \
+        libimage-exiftool-perl \
+        tesseract-ocr \
+        tesseract-ocr-ind \
         fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 

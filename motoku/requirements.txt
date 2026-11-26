@@ -16,6 +16,9 @@ rq>=2.0,<3
 # Favicon hashing (Shodan-compatible)
 mmh3>=4.0
 
+# Image forensics (EXIF, perceptual hash)
+Pillow>=10.0
+
 # Optional: install playwright for screenshots via Playwright instead of the
 # Chromium CLI (pip install playwright).
 

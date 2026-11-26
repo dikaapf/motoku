@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, copy_btn %}
+{% block title %}Profil Sosial{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-people-fill text-warning"></i> Profil Sosial (API publik)</h2>
+    <p class="text-secondary">Ambil profil publik lengkap dari GitHub, Reddit, Mastodon, Bluesky, Telegram, dan TikTok — bukan sekadar cek keberadaan akun.</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-warning"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control form-control-lg mb-3" id="username" name="username" required placeholder="john_doe atau user@mastodon.social" value="{{ request.form.get('username', '') }}">
+                <button type="submit" class="btn btn-warning w-100"><i class="bi bi-search"></i> Cari Profil</button>
+            </form>
+            {% if result %}<a class="btn btn-sm btn-outline-secondary w-100 mt-2" href="{{ url_for('username', q=result.username, auto=1) }}">Cek {{ result.username }} di ~650 situs (WhatsMyName)</a>{% endif %}
+        </div></div>
+        {% if result and result.pivots %}
+        <div class="card border-info mt-3"><div class="card-body small">
+            <h6><i class="bi bi-signpost-split"></i> Petunjuk pivot</h6>
+            {% for p in result.pivots %}<div class="mb-1"><span class="text-secondary">{{ p.source }} · {{ p.kind }}:</span> {{ p.value }}{{ copy_btn(p.value) }}</div>{% endfor %}
+        </div></div>
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if result %}
+        {{ result_data(result) }}
+        <div class="alert alert-secondary small py-2"><i class="bi bi-info-circle"></i> Username yang sama di platform berbeda <strong>belum tentu orang yang sama</strong>. Cocokkan foto, bio, tautan, dan waktu pembuatan akun sebelum menyimpulkan.</div>
+        {% call result_card(result.found ~ ' profil ditemukan untuk @' ~ result.username, 'bi-person-lines-fill', 'warning', 'social-' ~ result.username) %}
+        {% for r in result.results %}
+            {% for p in r.profiles %}
+            <div class="d-flex gap-3 border-bottom border-secondary pb-3 mb-3">
+                {% if p.avatar %}<img src="{{ p.avatar }}" alt="Avatar {{ p.platform }}" width="64" height="64" class="rounded" style="object-fit: cover" referrerpolicy="no-referrer" loading="lazy">{% endif %}
+                <div class="flex-grow-1">
+                    <div><span class="badge bg-warning text-dark">{{ p.platform }}</span>
+                        <a class="text-info" href="{{ p.url }}" target="_blank" rel="noopener noreferrer">{{ p.username }}</a>{% if p.name %} — <strong>{{ p.name }}</strong>{% endif %}
+                        {% if p.extra and p.extra.verified %}<i class="bi bi-patch-check-fill text-info" title="Terverifikasi"></i>{% endif %}</div>
+                    {% if p.bio %}<div class="small">{{ p.bio[:300] }}</div>{% endif %}
+                    <div class="small text-secondary">
+                        {% for k, v in (p.stats or {}).items() if v is not none %}{{ k }}: {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}
+                        {% if p.created %} · dibuat {{ p.created }}{% endif %}{% if p.location %} · {{ p.location }}{% endif %}
+                    </div>
+                    {% if p.extra and p.extra.organizations %}<div class="small text-secondary">Org: {{ p.extra.organizations|join(', ') }}</div>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endfor %}
+        <div class="small">
+            {% for r in result.results if not r.profiles %}<span class="badge bg-{{ 'secondary' if r.status == 'not_found' else 'dark border border-secondary' if r.status == 'no_key' else 'danger' }} me-1" title="{{ r.message or '' }}">{{ r.platform }}: {{ {'not_found': 'tidak ada', 'no_key': 'butuh key', 'error': 'error'}[r.status] }}</span>{% endfor %}
+        </div>
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

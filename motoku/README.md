@@ -62,7 +62,8 @@ Threat-intel API keys (all optional; every source without a key is shown as
 `MOTOKU_VT_API_KEY`, `MOTOKU_ABUSEIPDB_API_KEY`, `MOTOKU_GREYNOISE_API_KEY`,
 `MOTOKU_IPINFO_TOKEN`, `MOTOKU_ABUSECH_API_KEY` (URLhaus + MalwareBazaar),
 `MOTOKU_PHISHTANK_API_KEY`, `MOTOKU_GSB_API_KEY`, `MOTOKU_NVD_API_KEY`,
-`MOTOKU_GITHUB_TOKEN`. Free sources that need no key: Shodan InternetDB,
+`MOTOKU_GITHUB_TOKEN`, `MOTOKU_FIRMS_MAP_KEY`, `MOTOKU_OPENCORPORATES_TOKEN`,
+`MOTOKU_REDDIT_CLIENT_ID` + `MOTOKU_REDDIT_CLIENT_SECRET`. Free sources that need no key: Shodan InternetDB,
 Shodan CVEDB, FIRST EPSS, CISA KEV, RIPEstat, IPinfo (limited), GreyNoise
 community, OTX, PhishTank.
 
@@ -231,3 +232,26 @@ Only scan assets you own or are authorised to test.
 - **Recon enrichment**: the `/recon` pipeline now adds threat intel for the
   domain and its IPs, CVE mapping from port-scan CPEs and InternetDB, typosquats
   and cloud buckets, all feeding the prioritised findings.
+
+## S4 — People, image & geo
+
+- **Phone** (`/phone`): libphonenumber + Indonesian prefix → issuing operator
+  (MNP caveat), all number formats, footprint search links and manual messenger
+  links (wa.me, t.me). Messenger registration is deliberately *not* probed
+  automatically (needs unofficial automation and enables stalking).
+- **Image forensics** (`/image`): upload or URL; EXIF + GPS (reverse-geocoded),
+  full exiftool metadata, MD5/SHA1/SHA256 + aHash/dHash, editing/tampering hints,
+  Tesseract OCR (eng+ind) and reverse-image-search links. Uploads stay in memory.
+- **Corporate & academic** (`/corporate`): GLEIF LEI, OpenCorporates (token),
+  ORCID, OpenAlex, plus Indonesian registries without APIs (AHU, OSS, IDX,
+  putusan MA, SINTA).
+- **Geo** (`/geo`): decimal/DMS/Google-Maps-URL parsing, Nominatim (1 req/s),
+  Overpass POIs with mirror fallback, NASA FIRMS hotspots (MAP_KEY), map and
+  satellite links (Copernicus, Sentinel Hub, Worldview, Mapillary), and a NOAA
+  solar-position calculator: sun azimuth/elevation, shadow direction/length,
+  sunrise/sunset and an hourly table for chronolocation — drawn on a Leaflet map.
+- **Social profiles** (`/social`): GitHub, Reddit (OAuth app), Mastodon
+  (instance lookup), Bluesky, Telegram (public page) and TikTok (best-effort),
+  with per-platform pivots and a same-name ≠ same-person warning.
+- **Unified search** now recognises coordinates, image URLs and LEI codes, and
+  routes usernames to social profiles and names to corporate/academic search.

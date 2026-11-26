@@ -133,3 +133,36 @@ GITHUB = register('github', category='Leak & cloud', ttl=6 * 3600, daily_quota=5
                   homepage='https://github.com/settings/tokens')
 CLOUD_STORAGE = register('cloud-storage', category='Leak & cloud', ttl=6 * 3600,
                          description='Cek bucket publik S3 / GCS / Azure Blob')
+
+# ── S4: people, image & geo ──
+NOMINATIM = register('nominatim', category='Geo', ttl=7 * 86400, daily_quota=2000,
+                     description='OpenStreetMap Nominatim (geocode, maks 1 req/detik)',
+                     homepage='https://operations.osmfoundation.org/policies/nominatim/')
+OVERPASS = register('overpass', category='Geo', ttl=24 * 3600, daily_quota=1000,
+                    description='Overpass API: POI OpenStreetMap di sekitar titik',
+                    homepage='https://wiki.openstreetmap.org/wiki/Overpass_API')
+FIRMS = register('firms', category='Geo', ttl=3 * 3600, daily_quota=500, key_env='MOTOKU_FIRMS_MAP_KEY',
+                 description='NASA FIRMS titik api aktif (MAP_KEY gratis)',
+                 homepage='https://firms.modaps.eosdis.nasa.gov/api/map_key/')
+GLEIF = register('gleif', category='Korporasi', ttl=7 * 86400,
+                 description='GLEIF LEI: identitas badan hukum global (gratis)', homepage='https://www.gleif.org')
+OPENCORPORATES = register('opencorporates', category='Korporasi', ttl=7 * 86400, daily_quota=200,
+                          key_env='MOTOKU_OPENCORPORATES_TOKEN', description='OpenCorporates (butuh API token)',
+                          homepage='https://opencorporates.com/api_accounts/new')
+ORCID = register('orcid', category='Korporasi', ttl=7 * 86400,
+                 description='ORCID registry peneliti (gratis)', homepage='https://orcid.org')
+OPENALEX = register('openalex', category='Korporasi', ttl=7 * 86400,
+                    description='OpenAlex: penulis, afiliasi, sitasi (pengganti Scholar)',
+                    homepage='https://openalex.org')
+GITHUB_PUBLIC = register('github-users', category='Sosial', ttl=6 * 3600, daily_quota=60 * 24,
+                         key_env='MOTOKU_GITHUB_TOKEN', key_optional=True,
+                         description='GitHub users API (60/jam tanpa token)', homepage='https://docs.github.com/rest/users')
+REDDIT = register('reddit', category='Sosial', ttl=6 * 3600, daily_quota=1000,
+                  key_env='MOTOKU_REDDIT_CLIENT_SECRET',
+                  description='Reddit API (butuh MOTOKU_REDDIT_CLIENT_ID + SECRET, app "script")',
+                  homepage='https://www.reddit.com/prefs/apps')
+MASTODON = register('mastodon', category='Sosial', ttl=6 * 3600, description='Mastodon / fediverse lookup')
+BLUESKY = register('bluesky', category='Sosial', ttl=6 * 3600, description='Bluesky public AppView API')
+TELEGRAM = register('telegram', category='Sosial', ttl=6 * 3600, description='Halaman publik t.me')
+TIKTOK = register('tiktok', category='Sosial', ttl=6 * 3600, daily_quota=300,
+                  description='Profil publik TikTok (scraping, best-effort)')

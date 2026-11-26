@@ -27,6 +27,9 @@ class Config:
     # Request timeouts (seconds) shared by tools that make outbound calls.
     HTTP_TIMEOUT = int(os.environ.get('MOTOKU_HTTP_TIMEOUT', '10'))
 
+    # Upload limit (image forensics).
+    MAX_CONTENT_LENGTH = int(os.environ.get('MOTOKU_MAX_UPLOAD_MB', '16')) * 1024 * 1024
+
     # Persistence
     DB_PATH = os.environ.get('MOTOKU_DB_PATH', os.path.join(BASE_DIR, 'data', 'motoku.db'))
 
