@@ -217,13 +217,13 @@ def test_bundled_wmn_dataset_loads():
 def test_username_route(client, monkeypatch):
     from tools import wmn_tool
 
-    monkeypatch.setattr(wmn_tool, 'search', lambda u, categories=None, include_nsfw=False: {
+    monkeypatch.setattr(wmn_tool, 'search', lambda u, categories=None, include_nsfw=False, progress=None: {
         'username': u, 'checked': 1, 'elapsed_s': 0.1,
         'counts': {'found': 1, 'not_found': 0, 'unknown': 0},
         'results': [{'name': 'GitHub', 'category': 'coding', 'url': 'https://github.com/alice',
                      'status': 'found', 'http_code': 200, 'error': None}],
     })
-    response = client.post('/username', data={'username': 'alice'})
+    response = client.post('/username', data={'username': 'alice'}, follow_redirects=True)
     assert response.status_code == 200
     assert b'https://github.com/alice' in response.data
     assert b'id="result-data"' in response.data

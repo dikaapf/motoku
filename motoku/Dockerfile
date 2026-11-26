@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libxml2-dev \
         libxslt1-dev \
         whois \
+        nmap \
+        chromium \
+        fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -27,4 +30,8 @@ USER appuser
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+ENV MOTOKU_CHROMIUM_PATH=/usr/bin/chromium
+
+# gthread workers keep Server-Sent Events progress streams from blocking requests.
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--worker-class", "gthread", \
+     "--threads", "16", "--timeout", "120", "app:app"]

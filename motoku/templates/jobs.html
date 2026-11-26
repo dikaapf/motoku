@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Jobs{% endblock %}
+{% block content %}
+<h2><i class="bi bi-list-task text-info"></i> Background Jobs</h2>
+<p class="text-secondary">Backend: <span class="badge bg-secondary">{{ backend }}</span> · 50 job terakhir</p>
+{% set links = {'recon': 'recon_report', 'subdomain': 'subdomain', 'portscan': 'portscan', 'username': 'username'} %}
+<div class="table-responsive"><table class="table table-dark table-striped table-hover align-middle">
+    <thead><tr><th>Jenis</th><th>Target</th><th>Status</th><th>Pesan</th><th>Dibuat</th><th>Selesai</th></tr></thead>
+    <tbody>{% for j in jobs %}
+    <tr>
+        <td>{{ handlers.get(j.kind, {}).get('label', j.kind) }}</td>
+        <td>{% if j.kind == 'recon' %}<a class="text-success" href="{{ url_for('recon_report', job_id=j.id) }}">{{ j.target }}</a>
+            {% elif j.kind in links %}<a class="text-success" href="{{ url_for(links[j.kind], job=j.id) }}">{{ j.target }}</a>
+            {% else %}{{ j.target }}{% endif %}</td>
+        <td><span class="badge bg-{{ {'finished': 'success', 'failed': 'danger', 'running': 'info', 'queued': 'secondary'}[j.status] }}">{{ j.status }}{% if j.status == 'running' %} {{ j.progress }}%{% endif %}</span></td>
+        <td><small class="text-secondary">{{ (j.error or j.message or '')[:120] }}</small></td>
+        <td><small>{{ j.created_at }}</small></td>
+        <td><small>{{ j.finished_at or '-' }}</small></td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="text-secondary">Belum ada job.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

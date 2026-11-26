@@ -13,6 +13,7 @@ def isolated_runtime(tmp_path, monkeypatch):
     rate_limit.reset()
     cache.set_backend(cache.MemoryCache())
     monkeypatch.delenv('MOTOKU_HIBP_API_KEY', raising=False)
+    monkeypatch.setenv('MOTOKU_JOB_BACKEND', 'inline')
     flask_app.config.update(
         TESTING=True,
         CSRF_ENABLED=False,

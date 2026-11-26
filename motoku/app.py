@@ -1,5 +1,7 @@
 import hmac
+import json
 import secrets
+import time
 import uuid
 from datetime import datetime
 from urllib.parse import quote
@@ -12,7 +14,9 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
+    stream_with_context,
     url_for,
 )
 
@@ -21,9 +25,14 @@ import rate_limit
 from config import Config
 from services import cache as result_cache
 from services import detect as input_detect
+from services import (
+    job_handlers,  # noqa: F401  (registers job handlers)
+    jobs,
+)
 from services import providers as provider_registry
 from services.providers import registry as _provider_declarations  # noqa: F401
 from tools import (
+    archive_tool,
     cctv_tool,
     deep_username,
     dns_security,
@@ -32,12 +41,14 @@ from tools import (
     dorks_tool,
     email_tool,
     flight_tool,
+    http_probe,
     ip_tool,
     phone_tool,
     portscan_tool,
     search_tool,
     subdomain_tool,
     tech_tool,
+    tls_scan,
     web_security,
     wmn_tool,
 )
@@ -203,23 +214,28 @@ def my_ip():
 # ── USERNAME (WhatsMyName) ──
 @app.route('/username', methods=['GET', 'POST'])
 def username():
-    data = error = None
-    selected = []
-    include_nsfw = False
+    error = None
     if request.method == 'POST':
-        u = request.form.get('username', '').strip()
+        u = request.form.get('username', '').strip().lstrip('@')
         selected = [c for c in request.form.getlist('categories') if c]
         include_nsfw = request.form.get('nsfw') == '1'
         if not u:
             error = 'Masukkan username'
+        elif not wmn_tool.USERNAME_ALLOWED.match(u):
+            error = 'Username hanya boleh berisi huruf, angka, titik, garis bawah, atau strip'
         else:
-            try:
-                data = wmn_tool.search(u, categories=selected or None, include_nsfw=include_nsfw)
-            except Exception as e:
-                error = f'Gagal: {e}'
-    return render_template('username.html', data=data, error=error,
-                           dataset=wmn_tool.dataset_info(), selected=selected,
-                           include_nsfw=include_nsfw, nsfw_category=wmn_tool.NSFW_CATEGORY)
+            job_id = jobs.enqueue('username', u, {'username': u, 'categories': selected,
+                                                  'include_nsfw': include_nsfw})
+            return redirect(url_for('username', job=job_id))
+    job, data = _job_from_args('username')
+    if job and job['status'] == 'failed':
+        error = job['error']
+    params = (job or {}).get('params') or {}
+    return render_template('username.html', data=data, job=job, error=error,
+                           dataset=wmn_tool.dataset_info(), selected=params.get('categories', []),
+                           include_nsfw=params.get('include_nsfw', False),
+                           username_value=params.get('username', ''),
+                           nsfw_category=wmn_tool.NSFW_CATEGORY)
 
 
 @app.route('/username/update-dataset', methods=['POST'])
@@ -346,18 +362,28 @@ def web_security_page():
 # ── PORT SCAN ──
 @app.route('/portscan', methods=['GET', 'POST'])
 def portscan():
-    results = error = None
-    target = ''
+    error = None
     if request.method == 'POST':
         target = request.form.get('target', '').strip()
+        ports = request.form.get('ports', 'top').strip() or 'top'
+        engine = request.form.get('engine', 'auto')
         if not target:
             error = 'Masukkan host target'
         else:
             try:
-                results = portscan_tool.scan(target)
-            except Exception as e:
+                portscan_tool.parse_ports(ports)
+            except ValueError as e:
                 error = str(e)
-    return render_template('portscan.html', results=results, error=error, target=target)
+            else:
+                job_id = jobs.enqueue('portscan', target, {'target': target, 'ports': ports,
+                                                           'engine': engine})
+                return redirect(url_for('portscan', job=job_id))
+    job, results = _job_from_args('portscan')
+    if job and job['status'] == 'failed':
+        error = job['error']
+    return render_template('portscan.html', results=results, job=job, error=error,
+                           params=(job or {}).get('params') or {},
+                           nmap_available=portscan_tool.nmap_available())
 
 
 # ── TECH STACK ──
@@ -380,18 +406,150 @@ def tech():
 # ── SUBDOMAIN ENUMERATION ──
 @app.route('/subdomain', methods=['GET', 'POST'])
 def subdomain():
-    data = error = None
-    domain_val = ''
+    error = None
+    if request.method == 'POST':
+        domain_val = request.form.get('domain', '').strip()
+        try:
+            domain_val = subdomain_tool.clean_domain(domain_val)
+        except ValueError as e:
+            error = str(e)
+        else:
+            job_id = jobs.enqueue('subdomain', domain_val, {'domain': domain_val})
+            return redirect(url_for('subdomain', job=job_id))
+    job, data = _job_from_args('subdomain')
+    if job and job['status'] == 'failed':
+        error = job['error']
+    return render_template('subdomain.html', data=data, job=job, error=error,
+                           domain=(job or {}).get('target', ''))
+
+
+# ── TLS SCAN ──
+@app.route('/tls', methods=['GET', 'POST'])
+def tls_page():
+    report = error = None
+    if request.method == 'POST':
+        host = request.form.get('host', '').strip()
+        if not host:
+            error = 'Masukkan host'
+        else:
+            try:
+                report = tls_scan.scan(host)
+            except Exception as e:
+                error = str(e)
+    return render_template('tls.html', report=report, error=error)
+
+
+# ── ARCHIVE (Wayback / urlscan / favicon) ──
+@app.route('/archive', methods=['GET', 'POST'])
+def archive_page():
+    report = error = None
     if request.method == 'POST':
         domain_val = request.form.get('domain', '').strip()
         if not domain_val:
             error = 'Masukkan domain'
         else:
             try:
-                data = subdomain_tool.enumerate(domain_val)
+                report = archive_tool.investigate(domain_val)
             except Exception as e:
                 error = str(e)
-    return render_template('subdomain.html', data=data, error=error, domain=domain_val)
+    return render_template('archive.html', report=report, error=error)
+
+
+# ── RECON PIPELINE ──
+@app.route('/recon', methods=['GET', 'POST'])
+def recon():
+    error = None
+    if request.method == 'POST':
+        domain_val = request.form.get('domain', '').strip()
+        try:
+            domain_val = subdomain_tool.clean_domain(domain_val)
+        except ValueError as e:
+            error = str(e)
+        else:
+            options = {
+                'ports': request.form.get('ports') == '1',
+                'screenshots': request.form.get('screenshots') == '1',
+                'archive': request.form.get('archive') == '1',
+            }
+            job_id = jobs.enqueue('recon', domain_val, {'domain': domain_val, 'options': options})
+            return redirect(url_for('recon_report', job_id=job_id))
+    return render_template('recon.html', error=error, recent=db.list_jobs('recon', 15),
+                           screenshot_backend=http_probe.screenshot_backend(),
+                           nmap_available=portscan_tool.nmap_available())
+
+
+@app.route('/recon/<job_id>')
+def recon_report(job_id):
+    job = jobs.get(job_id)
+    if job is None or job['kind'] != 'recon':
+        abort(404)
+    return render_template('recon_report.html', job=job, report=job.get('result'))
+
+
+@app.route('/screenshots/<path:name>')
+def screenshot_file(name):
+    return send_from_directory(http_probe.SCREENSHOT_DIR, name, mimetype='image/png')
+
+
+# ── JOBS ──
+def _job_from_args(kind):
+    """Return ``(job, result)`` for ``?job=<id>`` of the given kind."""
+    job_id = request.args.get('job', '').strip()
+    if not job_id:
+        return None, None
+    job = jobs.get(job_id)
+    if job is None or job['kind'] != kind:
+        abort(404)
+    return job, job.get('result') if job['status'] == 'finished' else None
+
+
+@app.route('/jobs')
+def job_list():
+    return render_template('jobs.html', jobs=db.list_jobs(limit=50),
+                           backend=jobs.backend_name(), handlers=jobs.handlers())
+
+
+@app.route('/api/jobs/<job_id>')
+def api_job(job_id):
+    job = jobs.get(job_id)
+    if job is None:
+        return jsonify({'error': 'not found'}), 404
+    include = request.args.get('result') == '1'
+    return jsonify(jobs.public_view(job, include_result=include))
+
+
+@app.route('/api/jobs/<job_id>/events')
+def api_job_events(job_id):
+    if jobs.get(job_id) is None:
+        return jsonify({'error': 'not found'}), 404
+    interval = float(app.config.get('SSE_POLL_INTERVAL', 1.0))
+    max_seconds = int(app.config.get('SSE_MAX_SECONDS', 1800))
+
+    def stream():
+        last = None
+        started = time.monotonic()
+        last_beat = started
+        yield 'retry: 3000\n\n'
+        while time.monotonic() - started < max_seconds:
+            job = jobs.get(job_id)
+            if job is None:
+                yield 'event: gone\ndata: {}\n\n'
+                return
+            view = jobs.public_view(job)
+            payload = json.dumps(view, default=str)
+            if payload != last:
+                last = payload
+                yield f'data: {payload}\n\n'
+            if job['status'] in jobs.FINAL_STATES:
+                yield f'event: done\ndata: {payload}\n\n'
+                return
+            if time.monotonic() - last_beat > 15:
+                last_beat = time.monotonic()
+                yield ': keep-alive\n\n'
+            time.sleep(interval)
+
+    return Response(stream_with_context(stream()), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 # ── GOOGLE DORKS ──
@@ -599,6 +757,7 @@ def status():
         item = provider.status()
         item['usage'] = usage.pop(provider.name, None)
         registered.append(item)
+    safe_config['job_backend'] = jobs.backend_name()
     return render_template(
         'status.html',
         config=safe_config,

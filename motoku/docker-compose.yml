@@ -14,7 +14,28 @@ services:
       MOTOKU_CSRF_ENABLED: "1"
       MOTOKU_RATE_LIMIT_ENABLED: "1"
       MOTOKU_REDIS_URL: redis://redis:6379/0
+      MOTOKU_JOB_BACKEND: rq
       MOTOKU_HIBP_API_KEY: ${MOTOKU_HIBP_API_KEY:-}
+      MOTOKU_URLSCAN_API_KEY: ${MOTOKU_URLSCAN_API_KEY:-}
+      MOTOKU_OTX_API_KEY: ${MOTOKU_OTX_API_KEY:-}
+      MOTOKU_CERTSPOTTER_API_KEY: ${MOTOKU_CERTSPOTTER_API_KEY:-}
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # Background worker for recon / subdomain / port scan jobs (RQ).
+  worker:
+    build: .
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "motoku"]
+    environment:
+      MOTOKU_DB_PATH: /app/data/motoku.db
+      MOTOKU_REDIS_URL: redis://redis:6379/0
+      MOTOKU_HIBP_API_KEY: ${MOTOKU_HIBP_API_KEY:-}
+      MOTOKU_URLSCAN_API_KEY: ${MOTOKU_URLSCAN_API_KEY:-}
+      MOTOKU_OTX_API_KEY: ${MOTOKU_OTX_API_KEY:-}
+      MOTOKU_CERTSPOTTER_API_KEY: ${MOTOKU_CERTSPOTTER_API_KEY:-}
     depends_on:
       - redis
     volumes:

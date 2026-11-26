@@ -55,3 +55,31 @@
 {% elif status == 'fail' %}<i class="bi bi-x-circle-fill text-danger" title="Gagal"></i>
 {% else %}<i class="bi bi-info-circle-fill text-info" title="Info"></i>{% endif %}
 {%- endmacro %}
+
+{# Live progress panel for a background job (Server-Sent Events). #}
+{% macro job_progress(job) -%}
+{% if job and job.status not in ('finished', 'failed') %}
+<div class="card border-info mb-3 job-panel" data-job-id="{{ job.id }}"
+     data-events-url="{{ url_for('api_job_events', job_id=job.id) }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><span class="spinner-border spinner-border-sm text-info me-1"></span>
+            <span class="job-label">{{ job.kind }}</span> — <code>{{ job.target }}</code></span>
+        <span class="badge bg-info text-dark job-status">{{ job.status }}</span>
+    </div>
+    <div class="card-body">
+        <div class="progress mb-2" role="progressbar" aria-label="Progres job" style="height: 1.2rem">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info job-bar"
+                 style="width: {{ job.progress }}%">{{ job.progress }}%</div>
+        </div>
+        <div class="small text-secondary job-message mb-2">{{ job.message or 'Menunggu worker…' }}</div>
+        <pre class="job-log small mb-0">{{ (job.log or [])[-15:]|join('\n') }}</pre>
+        <small class="text-secondary d-block mt-2">Halaman akan dimuat ulang otomatis saat selesai. Anda boleh meninggalkan halaman ini; hasil tersimpan di <a href="{{ url_for('job_list') }}" class="text-info">Jobs</a>.</small>
+    </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro risk_badge(risk) -%}
+{% set colors = {'critical': 'danger', 'high': 'danger', 'medium': 'warning text-dark', 'low': 'info text-dark', 'info': 'secondary'} %}
+<span class="badge bg-{{ colors.get(risk, 'secondary') }}{% if risk == 'critical' %} border border-light{% endif %}">{{ risk }}</span>
+{%- endmacro %}

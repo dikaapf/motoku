@@ -9,8 +9,15 @@ lxml>=5.0
 gunicorn>=21.2
 cryptography>=42
 
-# Optional shared cache/quota store (used when MOTOKU_REDIS_URL is set)
+# Shared cache/quota store and background job queue (used when MOTOKU_REDIS_URL is set)
 redis>=5.0,<6
+rq>=2.0,<3
+
+# Favicon hashing (Shodan-compatible)
+mmh3>=4.0
+
+# Optional: install playwright for screenshots via Playwright instead of the
+# Chromium CLI (pip install playwright).
 
 # Deep username module (optional at runtime, installed by default here)
 sherlock-project>=0.15

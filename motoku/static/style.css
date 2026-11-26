@@ -196,3 +196,33 @@ code {
     right: 1.5rem;
     z-index: 1080;
 }
+
+/* ── S2: jobs, recon ── */
+.job-log {
+    max-height: 220px;
+    overflow-y: auto;
+    background: #050805;
+    border: 1px solid #1a2a1a;
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: #8fbf8f;
+    white-space: pre-wrap;
+}
+
+.shot-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 6px;
+    border: 1px solid #2a3a2a;
+}
+
+.stat-tile h3 {
+    margin-bottom: 0;
+}
+
+.sev-critical { border-left: 4px solid #ff3333 !important; }
+.sev-high { border-left: 4px solid #dc3545 !important; }
+.sev-medium { border-left: 4px solid #ffc107 !important; }
+.sev-low { border-left: 4px solid #0dcaf0 !important; }

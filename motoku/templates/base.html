@@ -33,6 +33,8 @@
                     </div>
                 </form>
                 <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('recon') }}"><i class="bi bi-radar text-success"></i> Recon</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('job_list') }}"><i class="bi bi-list-task"></i> Jobs</a></li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-grid-3x3-gap"></i> Tools
@@ -48,6 +50,8 @@
                             <li><a class="dropdown-item" href="{{ url_for('dns_security_page') }}"><i class="bi bi-shield-lock text-success"></i> DNS Security</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('web_security_page') }}"><i class="bi bi-shield-check text-info"></i> Headers &amp; TLS</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('subdomain') }}"><i class="bi bi-diagram-3-fill text-warning"></i> Subdomain</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('tls_page') }}"><i class="bi bi-lock-fill text-success"></i> TLS Scan &amp; CT</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('archive_page') }}"><i class="bi bi-clock-history text-warning"></i> Wayback &amp; urlscan</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('portscan') }}"><i class="bi bi-plug text-danger"></i> Port Scan</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('tech') }}"><i class="bi bi-cpu text-info"></i> Tech Stack</a></li>

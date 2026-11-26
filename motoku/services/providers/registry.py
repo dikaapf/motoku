@@ -38,3 +38,35 @@ MTA_STS = register(
 DNS = register(
     'dns', ttl=15 * 60, description='Resolver DNS (dnspython)',
 )
+
+# ── S2: infra recon ──
+CRTSH = register(
+    'crt.sh', ttl=12 * 3600, daily_quota=300,
+    description='Certificate Transparency (crt.sh)', homepage='https://crt.sh',
+)
+CERTSPOTTER = register(
+    'certspotter', ttl=12 * 3600, daily_quota=100,
+    description='CertSpotter CT API (100 query/jam tanpa key; key opsional)',
+    homepage='https://sslmate.com/certspotter/api/',
+)
+OTX = register(
+    'otx', ttl=12 * 3600, daily_quota=1000,
+    description='AlienVault OTX passive DNS (key opsional)',
+    homepage='https://otx.alienvault.com',
+)
+HACKERTARGET = register(
+    'hackertarget', ttl=12 * 3600, daily_quota=50,
+    description='HackerTarget hostsearch (50 query/hari gratis)',
+    homepage='https://hackertarget.com/find-dns-host-records/',
+)
+WAYBACK = register(
+    'wayback', ttl=24 * 3600, daily_quota=500,
+    description='Internet Archive Wayback CDX API', homepage='https://web.archive.org',
+)
+URLSCAN = register(
+    'urlscan', ttl=6 * 3600, daily_quota=100,
+    description='urlscan.io search (key opsional menaikkan limit)', homepage='https://urlscan.io',
+)
+HTTP_PROBE = register(
+    'http-probe', ttl=30 * 60, description='HTTP probe host (status, title, server)',
+)

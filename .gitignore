@@ -29,3 +29,4 @@ motoku/data/*.log
 Thumbs.db
 .idea/
 .vscode/
+motoku/data/screenshots/

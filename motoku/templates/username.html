@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import result_data, result_card, copy_btn %}
+{% from "_macros.html" import result_data, result_card, copy_btn, job_progress %}
 {% block title %}Username Tracker{% endblock %}
 {% block content %}
 <div class="row mb-4">
@@ -26,7 +26,7 @@
                             <span class="input-group-text"><i class="bi bi-at"></i></span>
                             <input type="text" class="form-control form-control-lg" id="username" name="username"
                                    placeholder="john_doe" required
-                                   value="{{ request.form.get('username', '') }}">
+                                   value="{{ request.form.get('username', username_value) }}">
                         </div>
                     </div>
                     <div class="mb-3">
@@ -45,7 +45,7 @@
                     <button type="submit" class="btn btn-warning w-100">
                         <i class="bi bi-search"></i> Cari Username
                     </button>
-                    <small class="text-secondary d-block mt-2">Scan semua situs bisa memakan waktu ~1 menit.</small>
+                    <small class="text-secondary d-block mt-2">Scan berjalan di background (~1 menit untuk semua situs).</small>
                 </form>
                 <hr>
                 <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="wmn-update">
@@ -60,6 +60,7 @@
         {% if error %}
         <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
         {% endif %}
+        {{ job_progress(job) }}
         {% if data %}
         {{ result_data(data) }}
         <div class="row g-2 mb-3 text-center">

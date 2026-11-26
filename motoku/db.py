@@ -46,6 +46,24 @@ CREATE TABLE IF NOT EXISTS cameras (
 CREATE INDEX IF NOT EXISTS idx_cameras_city ON cameras(city);
 CREATE INDEX IF NOT EXISTS idx_cameras_province ON cameras(province);
 
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    target TEXT,
+    params_json TEXT,
+    status TEXT NOT NULL DEFAULT 'queued',
+    progress INTEGER NOT NULL DEFAULT 0,
+    message TEXT,
+    log_json TEXT,
+    partial_json TEXT,
+    result_json TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_kind_created ON jobs(kind, created_at);
+
 CREATE TABLE IF NOT EXISTS provider_usage (
     provider TEXT PRIMARY KEY,
     calls INTEGER NOT NULL DEFAULT 0,
@@ -316,11 +334,79 @@ def provider_usage():
     return [dict(row) for row in rows]
 
 
+# ── Jobs ──
+JOB_JSON_FIELDS = ('params', 'log', 'partial', 'result')
+
+
+def _job_from_row(row):
+    if row is None:
+        return None
+    job = dict(row)
+    for field in JOB_JSON_FIELDS:
+        raw = job.pop(f'{field}_json', None)
+        job[field] = json.loads(raw) if raw else ([] if field == 'log' else None)
+    return job
+
+
+def create_job(job_id, kind, target, params):
+    with connection() as conn:
+        conn.execute(
+            'INSERT INTO jobs (id, kind, target, params_json, status, progress, created_at)'
+            " VALUES (?, ?, ?, ?, 'queued', 0, ?)",
+            (job_id, kind, target, json.dumps(params or {}), _now()),
+        )
+
+
+def get_job(job_id):
+    with connection() as conn:
+        row = conn.execute('SELECT * FROM jobs WHERE id = ?', (job_id,)).fetchone()
+    return _job_from_row(row)
+
+
+def list_jobs(kind=None, limit=20):
+    sql = ('SELECT id, kind, target, status, progress, message, error, created_at,'
+           ' started_at, finished_at FROM jobs')
+    args = []
+    if kind:
+        sql += ' WHERE kind = ?'
+        args.append(kind)
+    sql += ' ORDER BY created_at DESC, rowid DESC LIMIT ?'
+    args.append(limit)
+    with connection() as conn:
+        return [dict(r) for r in conn.execute(sql, args).fetchall()]
+
+
+def update_job(job_id, **fields):
+    """Update job columns; JSON fields (log/partial/result/params) are encoded."""
+    if not fields:
+        return
+    columns = []
+    values = []
+    for key, value in fields.items():
+        if key in JOB_JSON_FIELDS:
+            columns.append(f'{key}_json = ?')
+            values.append(json.dumps(value, default=str))
+        elif key in ('status', 'progress', 'message', 'error', 'started_at', 'finished_at'):
+            columns.append(f'{key} = ?')
+            values.append(value)
+        else:
+            raise ValueError(f'Unknown job field: {key}')
+    values.append(job_id)
+    with connection() as conn:
+        conn.execute(f'UPDATE jobs SET {", ".join(columns)} WHERE id = ?', values)
+
+
+def now():
+    return _now()
+
+
 def stats():
     with connection() as conn:
         tracking_total = conn.execute('SELECT COUNT(*) FROM tracking').fetchone()[0]
         camera_total = conn.execute('SELECT COUNT(*) FROM cameras').fetchone()[0]
+        job_total = conn.execute('SELECT COUNT(*) FROM jobs').fetchone()[0]
     return {
+        'job_total': job_total,
         'tracking_total': tracking_total,
         'camera_total': camera_total,
         'db_path': get_db_path(),

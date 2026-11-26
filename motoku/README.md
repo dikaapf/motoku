@@ -1,10 +1,12 @@
 # Motoku OSINT
 
-OSINT information-gathering toolkit built with Flask. Seventeen modules covering
+OSINT information-gathering toolkit built with Flask. Twenty modules covering
 phone, IP, username (WhatsMyName), email intelligence, domain (RDAP/WHOIS), DNS,
-DNS security grading, HTTP security headers & TLS, subdomain enumeration, port
-scanning, technology detection, dorks, people search, CCTV discovery, and flight
-tracking — all reachable from one unified search bar.
+DNS security grading, HTTP security headers & TLS, multi-source subdomain
+enumeration with takeover detection, nmap port scanning, TLS/CT scanning,
+Wayback/urlscan/favicon pivots, technology detection, dorks, people search, CCTV
+discovery, and flight tracking — plus a one-click domain recon pipeline that
+runs in the background. Everything is reachable from one unified search bar.
 
 ## Requirements
 
@@ -46,6 +48,13 @@ All settings are environment variables (see `.env.example`):
 | `MOTOKU_HIBP_API_KEY` | empty | Have I Been Pwned API key; enables breach lookups in Email Intelligence. |
 | `MOTOKU_DNS_DOH_FALLBACK` | `1` | Retry over DNS-over-HTTPS when the system resolver returns nothing. |
 | `MOTOKU_DOH_URL` | Cloudflare | DoH JSON endpoint used for the fallback and DNSSEC validation. |
+| `MOTOKU_JOB_BACKEND` | `thread` | `thread` (in-process pool), `rq` (Redis Queue + worker), or `inline` (synchronous; tests). |
+| `MOTOKU_JOB_WORKERS` | `4` | Thread-pool size for the `thread` backend. |
+| `MOTOKU_URLSCAN_API_KEY` | empty | Optional urlscan.io key (higher search limits). |
+| `MOTOKU_OTX_API_KEY` | empty | Optional AlienVault OTX key. |
+| `MOTOKU_CERTSPOTTER_API_KEY` | empty | Optional CertSpotter key. |
+| `MOTOKU_CHROMIUM_PATH` | auto | Chromium binary for screenshots (auto-detected). |
+| `MOTOKU_NMAP_PATH` | `nmap` | nmap binary; port scans fall back to TCP connect when absent. |
 
 Debug mode is disabled by default, and the app binds to localhost unless
 configured otherwise.
@@ -58,8 +67,9 @@ docker compose up --build
 ```
 
 The `./data` directory is mounted into the container so camera and tracking
-data persist across restarts. Compose also starts a Redis container that backs
-the result cache and daily provider quotas.
+data persist across restarts. Compose also starts Redis (result cache, daily
+provider quotas, job queue) and an `rq` worker that runs recon, subdomain,
+port-scan and username jobs. The image ships nmap and Chromium.
 
 ## Tests and lint
 
@@ -81,6 +91,10 @@ rate_limit.py        In-memory sliding-window rate limiter
 services/
   cache.py           Redis / in-memory TTL cache
   detect.py          Input-type detection for the unified search bar
+  http.py            Retry/backoff helper for flaky public sources
+  jobs.py            Background job queue (thread / RQ), state in SQLite
+  job_handlers.py    Job registrations (recon, subdomain, portscan, username)
+  recon.py           One-click domain recon pipeline
   resolver.py        DNS resolver with DNS-over-HTTPS fallback
   providers/         Provider abstraction (cache, quota, API keys) + registry
 tools/               One module per OSINT capability
@@ -156,3 +170,29 @@ by `Provider.fetch`.
 
 Datasets: [WhatsMyName](https://github.com/WebBreacher/WhatsMyName) (CC BY-SA
 4.0) and [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains) (CC0).
+
+## S2 — Infra recon
+
+- **Background jobs** (`services/jobs.py`): long scans run as jobs whose state,
+  progress, log and result live in SQLite. Pages stream progress over
+  Server-Sent Events (`/api/jobs/<id>/events`) and reload when done. `/jobs`
+  lists recent jobs. Backends: in-process threads (default) or RQ + Redis.
+- **Subdomains**: crt.sh, CertSpotter, AlienVault OTX, HackerTarget + DNS brute
+  force, merged per source, resolved concurrently (A/AAAA/CNAME), with wildcard
+  DNS detection and filtering.
+- **Takeover detection**: CNAME fingerprints for ~25 services (S3, GitHub Pages,
+  Heroku, Azure, Shopify, Netlify, …) confirmed by NXDOMAIN or service error page.
+- **HTTP probe**: status, title, server, redirects, favicon; screenshots through
+  Playwright when installed, otherwise headless Chromium.
+- **Port scan**: nmap `-sT -sV` (no root) with XML parsing, CPEs and per-port
+  risk rating; TCP-connect + banner fallback; custom port lists/ranges.
+- **TLS scan** (`/tls`): TLS 1.0–1.3 support, cipher, certificate, grade, and
+  Certificate Transparency history from crt.sh.
+- **Archive** (`/archive`): Wayback CDX with "interesting URL" flags, urlscan.io
+  search, Shodan-compatible favicon mmh3 hash.
+- **Recon pipeline** (`/recon`): one domain → RDAP, DNS security, subdomains,
+  takeover, HTTP probe, screenshots, TLS/CT, port scan, archive — summarised as
+  prioritised findings, exportable as JSON/CSV. Failing stages are recorded and
+  the pipeline continues.
+
+Only scan assets you own or are authorised to test.

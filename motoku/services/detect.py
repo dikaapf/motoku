@@ -30,15 +30,19 @@ ROUTES = {
     'url': [
         ('web_security_page', 'Security Headers & TLS', 'url'),
         ('tech', 'Tech Stack', 'url'),
+        ('tls_page', 'TLS Scan & CT', 'host'),
         ('domain', 'Domain RDAP/WHOIS', 'domain'),
         ('dns_security_page', 'DNS Security', 'domain'),
     ],
     'domain': [
         ('domain', 'Domain RDAP/WHOIS', 'domain'),
+        ('recon', 'Recon lengkap (background)', 'domain'),
         ('dns_security_page', 'DNS Security', 'domain'),
         ('dns', 'DNS Records', 'domain'),
         ('web_security_page', 'Security Headers & TLS', 'url'),
         ('subdomain', 'Subdomain', 'domain'),
+        ('tls_page', 'TLS Scan & CT', 'host'),
+        ('archive_page', 'Wayback & urlscan', 'domain'),
         ('tech', 'Tech Stack', 'url'),
         ('dorks', 'Google Dorks', 'target'),
     ],
@@ -110,7 +114,7 @@ def value_for_field(qtype, value, field):
             return local
     if qtype == 'url':
         host = urlparse(value).hostname or value
-        if field in ('domain', 'target'):
+        if field in ('domain', 'target', 'host'):
             return host
     if qtype == 'domain' and field == 'url':
         return 'https://' + value

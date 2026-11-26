@@ -189,3 +189,55 @@ function initCopyAndExport() {
         }
     });
 }
+
+/* ── Background jobs: live progress via Server-Sent Events ── */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.job-panel[data-events-url]').forEach(panel => {
+        const bar = panel.querySelector('.job-bar');
+        const status = panel.querySelector('.job-status');
+        const message = panel.querySelector('.job-message');
+        const logEl = panel.querySelector('.job-log');
+        const label = panel.querySelector('.job-label');
+        let reloaded = false;
+
+        function render(job) {
+            const pct = Math.max(0, Math.min(100, job.progress || 0));
+            bar.style.width = pct + '%';
+            bar.textContent = pct + '%';
+            status.textContent = job.status;
+            if (job.label) label.textContent = job.label;
+            if (job.message) message.textContent = job.message;
+            if (job.log && job.log.length) {
+                logEl.textContent = job.log.slice(-15).join('\n');
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        }
+
+        function finish() {
+            if (reloaded) return;
+            reloaded = true;
+            window.location.reload();
+        }
+
+        if (!window.EventSource) {
+            const poll = () => fetch('/api/jobs/' + panel.dataset.jobId)
+                .then(r => r.json())
+                .then(job => {
+                    render(job);
+                    if (job.status === 'finished' || job.status === 'failed') finish();
+                    else setTimeout(poll, 2000);
+                });
+            poll();
+            return;
+        }
+
+        const source = new EventSource(panel.dataset.eventsUrl);
+        source.onmessage = e => render(JSON.parse(e.data));
+        source.addEventListener('done', e => {
+            render(JSON.parse(e.data));
+            source.close();
+            setTimeout(finish, 400);
+        });
+        source.addEventListener('gone', () => source.close());
+    });
+});

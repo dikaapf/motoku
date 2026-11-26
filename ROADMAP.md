@@ -11,7 +11,7 @@ Satuan: 1 PD ≈ 6–8 jam efektif. Solo full-time ≈ 4–5 bulan; 2 dev parale
 |---|---|---|---|---|
 | **S0** ✅ | Stabilisasi & fondasi | 1 sprint | ~10 PD | — |
 | **S1** ✅ | Core OSINT upgrade | 1 sprint | ~13 PD | S0 |
-| **S2** | Infra recon (domain/IP) | 1.5 sprint | ~16.5 PD | S0, S1 |
+| **S2** ✅ | Infra recon (domain/IP) | 1.5 sprint | ~16.5 PD | S0, S1 |
 | **S3** | Threat intel & enrichment | 1.5 sprint | ~14.5 PD | S2 |
 | **S4** | People, image, geo | 1.5 sprint | ~12.5 PD | S1 |
 | **S5** | Case management & report | 2 sprint | ~19.5 PD | S2, S4 |
@@ -55,7 +55,7 @@ Satuan: 1 PD ≈ 6–8 jam efektif. Solo full-time ≈ 4–5 bulan; 2 dev parale
 **DoD S1:** minimal 3 modul baru produksi (username, email, DNS security) + search bar terpadu.
 
 **Status S1 (2026-11-27): selesai.** Semua 8 task terimplementasi dengan test (`tests/test_s1.py`).
-Catatan: scan username penuh (~650 situs) butuh ~40 detik secara sinkron — dipindah ke job queue di S2 (2.1).
+Catatan: scan username penuh (~650 situs) ~40 detik — sudah dipindah ke job queue di S2.
 Export JSON/CSV baru dipasang di halaman S1 + DNS; halaman lama menyusul saat dipindah ke result card.
 
 ---
@@ -73,6 +73,11 @@ Export JSON/CSV baru dipasang di halaman S1 + DNS; halaman lama menyusul saat di
 | 2.7 | Wayback CDX, URLScan, favicon hash (mmh3) | 1.5 |
 
 **DoD S2:** satu input domain menghasilkan laporan recon lengkap di background job.
+
+**Status S2 (2026-11-27): selesai.** Job queue (thread/RQ) + SSE, recon pipeline `/recon`,
+semua 7 task dengan test (`tests/test_s2.py`). Catatan: naabu tidak dipakai (nmap `-sT -sV` +
+fallback TCP connect); screenshot memakai Playwright bila terpasang, selain itu Chromium headless.
+Scan username kini juga berjalan sebagai job (menutup catatan S1).
 
 ---
 

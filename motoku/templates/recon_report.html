@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, job_progress, grade_badge, risk_badge, copy_btn %}
+{% block title %}Recon {{ job.target }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-radar text-success"></i> Recon: <code>{{ job.target }}</code></h2>
+        <small class="text-secondary">Job {{ job.id }} · dibuat {{ job.created_at }}{% if job.finished_at %} · selesai {{ job.finished_at }}{% endif %}</small>
+    </div>
+    <a href="{{ url_for('recon') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Recon baru</a>
+</div>
+
+{{ job_progress(job) }}
+{% if job.status == 'failed' %}
+<div class="alert alert-danger"><i class="bi bi-x-octagon"></i> Recon gagal: {{ job.error }}</div>
+{% endif %}
+
+{% if report %}
+{{ result_data(report) }}
+{% set s = report.summary %}
+<div class="d-flex justify-content-end mb-2">
+    {% from "_macros.html" import export_toolbar %}{{ export_toolbar('recon-' ~ report.domain, 'summary.findings') }}
+</div>
+<div class="row g-2 mb-3 text-center">
+    {% for label, value in [('Subdomain', s.subdomains), ('Resolve', s.alive_dns), ('HTTP hidup', s.alive_http), ('Port terbuka', s.open_ports), ('Takeover', s.takeover), ('DNS grade', s.dns_grade or '-'), ('TLS grade', s.tls_grade or '-')] %}
+    <div class="col-6 col-md"><div class="card border-secondary stat-tile h-100"><div class="card-body py-2"><h3 class="{% if label == 'Takeover' and value %}text-danger{% endif %}">{{ value }}</h3><small>{{ label }}</small></div></div></div>
+    {% endfor %}
+</div>
+
+<div class="row">
+<div class="col-lg-8">
+    {% call result_card('Temuan Prioritas', 'bi-exclamation-diamond', 'danger', toolbar=False) %}
+    {% if s.findings %}
+    <ul class="list-group list-group-flush">
+        {% for f in s.findings %}
+        <li class="list-group-item bg-transparent sev-{{ f.severity }}">{{ risk_badge(f.severity) }} <strong>{{ f.title }}</strong><br><small class="text-secondary">{{ f.detail }}</small></li>
+        {% endfor %}
+    </ul>
+    {% else %}<p class="text-success mb-0"><i class="bi bi-check-circle"></i> Tidak ada temuan berisiko tinggi.</p>{% endif %}
+    {% endcall %}
+
+    {% set http = report.http or [] %}
+    {% set shots = report.screenshots or {} %}
+    {% call result_card('HTTP Probe (' ~ (http|selectattr('alive')|list|length) ~ ' hidup)', 'bi-globe2', 'info', toolbar=False) %}
+    {% if shots %}
+    <div class="row g-2 mb-3">
+        {% for host, name in shots.items() %}
+        <div class="col-6 col-md-4"><a href="{{ url_for('screenshot_file', name=name) }}" target="_blank" rel="noopener">
+            <img src="{{ url_for('screenshot_file', name=name) }}" class="shot-thumb" alt="Screenshot {{ host }}" loading="lazy"></a>
+            <small class="d-block text-truncate text-secondary">{{ host }}</small></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="table-responsive" style="max-height: 420px"><table class="table table-dark table-sm table-striped mb-0 align-middle">
+        <thead><tr><th>Host</th><th>Status</th><th>Title</th><th>Server</th></tr></thead>
+        <tbody>{% for h in http if h.alive %}
+        <tr><td><a class="text-info small" href="{{ h.final_url }}" target="_blank" rel="noopener noreferrer">{{ h.host }}</a></td>
+            <td><span class="badge bg-{{ 'success' if h.status < 300 else 'warning text-dark' if h.status < 400 else 'secondary' }}">{{ h.status }}</span></td>
+            <td><small>{{ h.title[:70] }}</small></td><td><small class="text-secondary">{{ h.server }}{% if h.powered_by %} · {{ h.powered_by }}{% endif %}</small></td></tr>
+        {% else %}<tr><td colspan="4" class="text-secondary">Tidak ada host HTTP yang menjawab.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% endcall %}
+
+    {% set subs = report.subdomains %}
+    {% if subs %}
+    {% call result_card(subs.total ~ ' Subdomain', 'bi-diagram-3-fill', 'warning', toolbar=False) %}
+    <div class="mb-2 small">{% for name, src in subs.sources.items() %}<span class="badge bg-{{ 'danger' if src.error else 'secondary' }} me-1" title="{{ src.error or '' }}">{{ name }}: {{ src.count }}</span>{% endfor %}
+        {% if subs.wildcard.enabled %}<span class="badge bg-warning text-dark">wildcard DNS</span>{% endif %}</div>
+    {% for f in (report.takeover or {}).get('findings', []) %}
+    <div class="alert alert-danger py-1 small mb-2"><strong>{{ f.host }}</strong> → {{ f.cname }} ({{ f.service }}, {{ f.status }})</div>
+    {% endfor %}
+    <div class="table-responsive" style="max-height: 360px"><table class="table table-dark table-sm mb-0">
+        <tbody>{% for h in subs.hosts %}
+        <tr class="{% if not h.alive %}text-secondary{% endif %}"><td><code class="small">{{ h.name }}</code></td><td><small>{{ (h.cname[:1] + h.a[:2])|join(', ') }}</small></td><td>{% for x in h.sources %}<span class="badge bg-secondary me-1">{{ x }}</span>{% endfor %}</td></tr>
+        {% endfor %}</tbody></table></div>
+    {% endcall %}
+    {% endif %}
+
+    {% set ports = report.ports %}
+    {% if ports %}
+    {% call result_card('Port Scan — ' ~ ports.host ~ ' (' ~ ports.engine ~ ')', 'bi-plug', 'danger', toolbar=False) %}
+    <table class="table table-dark table-sm mb-0"><tbody>{% for p in ports.open %}
+        <tr><td><code>{{ p.port }}</code></td><td>{{ p.service }}</td><td><small>{{ p.product or p.banner[:60] }}</small></td><td>{{ risk_badge(p.risk) }}</td></tr>
+    {% else %}<tr><td class="text-secondary">Tidak ada port terbuka.</td></tr>{% endfor %}</tbody></table>
+    {% endcall %}
+    {% endif %}
+
+    {% set ar = report.archive %}
+    {% if ar %}
+    {% call result_card('Arsip & Pivot', 'bi-clock-history', 'warning', toolbar=False) %}
+    {% if ar.wayback %}<p class="small mb-1">Wayback: {{ ar.wayback.total }} URL unik, {{ ar.wayback.interesting|length }} menarik.</p>
+        <ul class="small mb-2">{% for u in ar.wayback.interesting[:15] %}<li class="text-break"><a class="text-warning" href="{{ u.archive }}" target="_blank" rel="noopener noreferrer">{{ u.url[:120] }}</a></li>{% endfor %}</ul>
+    {% else %}<p class="small text-secondary">Wayback: {{ ar.wayback_error }}</p>{% endif %}
+    <p class="small mb-1">urlscan.io: {{ ar.urlscan.total if ar.urlscan else (ar.urlscan_error or '-') }} scan publik.</p>
+    {% if ar.favicon %}<p class="small mb-0">Favicon mmh3 <code>{{ ar.favicon.mmh3 }}</code>{{ copy_btn(ar.favicon.shodan_query) }} — <a class="text-danger" target="_blank" rel="noopener" href="https://www.shodan.io/search?query={{ ar.favicon.shodan_query|urlencode }}">Shodan</a></p>{% endif %}
+    {% endcall %}
+    {% endif %}
+</div>
+
+<div class="col-lg-4">
+    {% set w = report.whois %}
+    {% if w %}
+    {% call result_card('Registrasi (' ~ w.source ~ ')', 'bi-building', 'primary', toolbar=False) %}
+    <table class="table table-dark table-sm mb-0 small"><tbody>
+        <tr><td>Registrar</td><td>{{ w.registrar }}</td></tr>
+        <tr><td>Dibuat</td><td>{{ (w.creation_date or '')[:10] }}</td></tr>
+        <tr><td>Kedaluwarsa</td><td>{{ (w.expiration_date or '')[:10] }}</td></tr>
+        <tr><td>IP</td><td>{{ w.ip }}</td></tr>
+        <tr><td>NS</td><td>{{ (w.name_servers or [])|join(', ') }}</td></tr>
+    </tbody></table>
+    {% endcall %}
+    {% endif %}
+
+    {% set d = report.dns_security %}
+    {% if d %}
+    {% call result_card('DNS Security', 'bi-shield-lock', 'success', toolbar=False) %}
+    <div class="d-flex align-items-center gap-3 mb-2">{{ grade_badge(d.grade, d.score) }}
+        <a class="btn btn-sm btn-outline-success" href="{{ url_for('dns_security_page', q=report.domain, auto=1) }}">Detail</a></div>
+    <ul class="small mb-0">{% for r in d.recommendations[:5] %}<li>{{ r }}</li>{% endfor %}</ul>
+    {% endcall %}
+    {% endif %}
+
+    {% set t = report.tls %}
+    {% if t %}
+    {% call result_card('TLS', 'bi-lock', 'info', toolbar=False) %}
+    {% if not t.grade %}<p class="small text-secondary">Tidak ada layanan TLS di port 443{% if t.certificate_error %}: {{ t.certificate_error }}{% endif %}</p>{% endif %}
+    {% if t.grade %}<div class="d-flex align-items-center gap-3 mb-2">{{ grade_badge(t.grade, t.score) }}
+        <div class="small">{% for p in t.protocols if p.supported %}<span class="badge bg-{{ 'success' if p.quality == 'good' else 'danger' }} me-1">{{ p.protocol }}</span>{% endfor %}</div></div>{% endif %}
+    {% if t.certificate %}<p class="small mb-1">{{ t.certificate.issuer.organizationName or t.certificate.issuer.commonName }} · {{ t.certificate.days_left }} hari lagi</p>{% endif %}
+    {% if t.ct %}<p class="small mb-0">CT: {{ t.ct.total }} sertifikat sejak {{ (t.ct.first_seen or '')[:10] }}</p>{% endif %}
+    {% endcall %}
+    {% endif %}
+
+    {% call result_card('Tahapan', 'bi-list-ol', 'secondary', toolbar=False) %}
+    <ul class="list-unstyled small mb-0">
+        {% for key, st in report.stages.items() %}
+        <li class="mb-1">{% if st.status == 'ok' %}<i class="bi bi-check-circle text-success"></i>{% elif st.status == 'skipped' %}<i class="bi bi-dash-circle text-secondary"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+            {{ st.label }} <span class="text-secondary">{{ st.seconds }}s</span>
+            {% if st.error %}<br><small class="text-secondary ms-3">{{ st.error }}</small>{% endif %}</li>
+        {% endfor %}
+    </ul>
+    {% endcall %}
+</div>
+</div>
+{% endif %}
+{% endblock %}

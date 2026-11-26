@@ -156,7 +156,7 @@ def check_site(site, username, timeout=DEFAULT_TIMEOUT, session=None):
 
 
 def search(username, categories=None, include_nsfw=False,
-           timeout=DEFAULT_TIMEOUT, workers=DEFAULT_WORKERS):
+           timeout=DEFAULT_TIMEOUT, workers=DEFAULT_WORKERS, progress=None):
     username = (username or '').strip().lstrip('@')
     if not USERNAME_ALLOWED.match(username):
         raise ValueError('Username hanya boleh berisi huruf, angka, titik, garis bawah, atau strip')
@@ -178,6 +178,10 @@ def search(username, categories=None, include_nsfw=False,
                 futures = [pool.submit(check_site, s, username, timeout, session) for s in sites]
                 for fut in as_completed(futures):
                     results.append(fut.result())
+                    if progress and len(results) % 25 == 0:
+                        found = sum(1 for r in results if r['status'] == 'found')
+                        progress(100 * len(results) / len(futures),
+                                 f'{len(results)}/{len(futures)} situs dicek, {found} ditemukan')
         results.sort(key=lambda r: (r['status'] != 'found', r['category'], r['name'].lower()))
         counts = {'found': 0, 'not_found': 0, 'unknown': 0}
         for r in results:
