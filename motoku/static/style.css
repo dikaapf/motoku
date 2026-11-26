@@ -109,3 +109,90 @@ code {
     padding: 6px 10px !important;
     font-size: 12px !important;
 }
+
+/* ── S1: unified search, result cards, grades ── */
+.nav-search {
+    max-width: 320px;
+}
+
+.nav-search .form-control {
+    background-color: #0a0e0a;
+    border-color: #2a3a2a;
+}
+
+.hero-search .form-control {
+    background-color: #0d1110;
+    border-color: #2a3a2a;
+}
+
+.detected-type {
+    font-size: 0.8rem;
+    min-height: 1.2rem;
+}
+
+.result-card .card-header {
+    background-color: #0d1110;
+}
+
+.result-toolbar .btn {
+    border-color: #2a3a2a;
+}
+
+.copy-btn {
+    color: #6c8a6c;
+    text-decoration: none;
+}
+
+.copy-btn:hover,
+.copy-btn.copied {
+    color: #00ff88;
+}
+
+.grade-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    border-radius: 14px;
+    border: 3px solid currentColor;
+}
+
+.grade-badge .grade-letter {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.grade-badge .grade-score {
+    font-size: 0.8rem;
+    opacity: 0.85;
+}
+
+.grade-a { color: #00ff88; }
+.grade-b { color: #9be15d; }
+.grade-c { color: #ffc107; }
+.grade-d,
+.grade-e { color: #fd7e14; }
+.grade-f { color: #dc3545; }
+
+.check-list .list-group-item {
+    background-color: transparent;
+    border-color: #1a2a1a;
+}
+
+.wmn-filter .btn-check + .btn {
+    font-size: 0.75rem;
+}
+
+.wmn-row[hidden] {
+    display: none !important;
+}
+
+.toast-copy {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 1080;
+}

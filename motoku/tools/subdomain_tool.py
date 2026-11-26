@@ -1,8 +1,9 @@
-import dns.resolver
-import requests
-import json
 import re
 
+import dns.resolver
+import requests
+
+from db import provider_call
 
 COMMON_SUBDOMAINS = [
     'www', 'mail', 'ftp', 'admin', 'api', 'blog', 'cdn', 'dev',
@@ -47,11 +48,12 @@ def clean_domain(domain):
 def crtsh_subdomains(domain):
     subdomains = set()
     try:
-        resp = requests.get(
-            f'https://crt.sh/?q=%25.{domain}&output=json',
-            timeout=15,
-            headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
-        )
+        with provider_call('crt.sh'):
+            resp = requests.get(
+                f'https://crt.sh/?q=%25.{domain}&output=json',
+                timeout=15,
+                headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
+            )
         if resp.status_code == 200 and resp.text:
             data = resp.json()
             for entry in data:

@@ -1,0 +1,57 @@
+{# Shared UI building blocks for result pages. #}
+
+{# Embed result data as JSON for the copy/export toolbar. #}
+{% macro result_data(data, id='result-data') -%}
+<script type="application/json" id="{{ id }}">{{ data|tojson }}</script>
+{%- endmacro %}
+
+{# Toolbar: copy JSON, export JSON, export CSV.
+   rows: dotted path to the list used for CSV rows (empty = flatten object). #}
+{% macro export_toolbar(filename, rows='', id='result-data') -%}
+<div class="btn-group btn-group-sm result-toolbar" role="group" aria-label="Export hasil">
+    <button type="button" class="btn btn-outline-light" data-export="copy" data-source="{{ id }}" title="Salin JSON">
+        <i class="bi bi-clipboard"></i><span class="d-none d-md-inline"> Salin</span>
+    </button>
+    <button type="button" class="btn btn-outline-light" data-export="json" data-source="{{ id }}" data-filename="{{ filename }}" title="Unduh JSON">
+        <i class="bi bi-filetype-json"></i><span class="d-none d-md-inline"> JSON</span>
+    </button>
+    <button type="button" class="btn btn-outline-light" data-export="csv" data-source="{{ id }}" data-filename="{{ filename }}" data-rows="{{ rows }}" title="Unduh CSV">
+        <i class="bi bi-filetype-csv"></i><span class="d-none d-md-inline"> CSV</span>
+    </button>
+</div>
+{%- endmacro %}
+
+{# Small inline copy button for a single value. #}
+{% macro copy_btn(value) -%}
+<button type="button" class="btn btn-link btn-sm p-0 ms-1 copy-btn" data-copy="{{ value }}" title="Salin">
+    <i class="bi bi-clipboard"></i>
+</button>
+{%- endmacro %}
+
+{# Result card with a header that carries the export toolbar. #}
+{% macro result_card(title, icon='bi-list-check', color='success', filename='motoku', rows='', toolbar=True) -%}
+<div class="card border-{{ color }} result-card mb-3">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <span><i class="bi {{ icon }} text-{{ color }}"></i> {{ title }}</span>
+        {% if toolbar %}{{ export_toolbar(filename, rows) }}{% endif %}
+    </div>
+    <div class="card-body">
+        {{ caller() }}
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro grade_badge(grade, score=None) -%}
+{% set g = grade[0] if grade else 'F' %}
+<div class="grade-badge grade-{{ g|lower }}">
+    <span class="grade-letter">{{ grade }}</span>
+    {% if score is not none %}<span class="grade-score">{{ score }}/100</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_icon(status) -%}
+{% if status == 'pass' %}<i class="bi bi-check-circle-fill text-success" title="Lulus"></i>
+{% elif status == 'warn' %}<i class="bi bi-exclamation-triangle-fill text-warning" title="Peringatan"></i>
+{% elif status == 'fail' %}<i class="bi bi-x-circle-fill text-danger" title="Gagal"></i>
+{% else %}<i class="bi bi-info-circle-fill text-info" title="Info"></i>{% endif %}
+{%- endmacro %}

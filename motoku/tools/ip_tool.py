@@ -1,13 +1,27 @@
 import requests
 
+from db import provider_call
+
+IPWHOIS_URL = 'https://ipwho.is/{ip}'
+IPIFY_URL = 'https://api.ipify.org'
+TIMEOUT = 10
+
 
 def track(ip):
-    resp = requests.get(f"http://ipwho.is/{ip}", timeout=10)
+    with provider_call('ipwho.is'):
+        resp = requests.get(IPWHOIS_URL.format(ip=ip), timeout=TIMEOUT)
+        resp.raise_for_status()
     data = resp.json()
     if not data.get('success', True):
         raise ValueError(data.get('message', 'IP tidak valid'))
 
-    maps_url = f"https://www.google.com/maps/@{data['latitude']},{data['longitude']},8z"
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    if latitude is not None and longitude is not None:
+        maps_url = f"https://www.google.com/maps/@{latitude},{longitude},8z"
+    else:
+        maps_url = ''
+
     return {
         'ip': ip,
         'type': data.get('type', 'N/A'),
@@ -16,8 +30,8 @@ def track(ip):
         'city': data.get('city', 'N/A'),
         'continent': data.get('continent', 'N/A'),
         'region': data.get('region', 'N/A'),
-        'latitude': data.get('latitude', 'N/A'),
-        'longitude': data.get('longitude', 'N/A'),
+        'latitude': latitude if latitude is not None else 'N/A',
+        'longitude': longitude if longitude is not None else 'N/A',
         'maps_url': maps_url,
         'postal': data.get('postal', 'N/A'),
         'calling_code': data.get('calling_code', 'N/A'),
@@ -32,5 +46,7 @@ def track(ip):
 
 
 def my_ip():
-    resp = requests.get('https://api.ipify.org', timeout=5)
-    return resp.text
+    with provider_call('ipify.org'):
+        resp = requests.get(IPIFY_URL, timeout=5)
+        resp.raise_for_status()
+    return resp.text.strip()

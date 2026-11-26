@@ -1,32 +1,50 @@
-import sys
-import os
 import re
+
 import requests
 
-SHERLOCK_DIR = '/tmp/sherlock'
-sys.path.insert(0, SHERLOCK_DIR)
+from db import provider_call
+
+# Sherlock and Instaloader are optional at runtime. They are imported lazily
+# so the rest of the application keeps working when they are not installed.
+SHERLOCK_INSTALL_HINT = 'pip install sherlock-project'
+INSTALOADER_INSTALL_HINT = 'pip install instaloader'
+
+
+def _sherlock_error(message):
+    return {
+        'error': message,
+        'found': [],
+        'all': [],
+        'total_checked': 0,
+        'total_found': 0,
+    }
 
 
 def sherlock_search(username, timeout=30):
-    results = []
     try:
+        from sherlock_project.notify import QueryNotify
+        from sherlock_project.result import QueryResult, QueryStatus
         from sherlock_project.sherlock import sherlock as sherlock_func
         from sherlock_project.sites import SitesInformation
-        from sherlock_project.notify import QueryNotify
-        from sherlock_project.result import QueryStatus
+    except ImportError as e:
+        return _sherlock_error(
+            f'Modul Sherlock belum terpasang ({e}). Jalankan: {SHERLOCK_INSTALL_HINT}'
+        )
 
+    try:
         sites = SitesInformation()
         site_data = {site.name: site.information for site in sites}
         query_notify = QueryNotify()
-        raw = sherlock_func(username, site_data, query_notify, timeout=timeout)
+        with provider_call('sherlock'):
+            raw = sherlock_func(username, site_data, query_notify, timeout=timeout)
     except Exception as e:
-        return {'error': str(e), 'found': [], 'total_checked': 0, 'total_found': 0}
-
-    from sherlock_project.result import QueryResult
+        return _sherlock_error(str(e))
 
     total_checked = len(raw)
     total_found = 0
     found = []
+    all_results = []
+
     for site_name, data in raw.items():
         qresult = data.get('status')
         if isinstance(qresult, QueryResult):
@@ -45,7 +63,7 @@ def sherlock_search(username, timeout=30):
             'status': status_str,
             'http_status': data.get('http_status'),
         }
-        results.append(entry)
+        all_results.append(entry)
         if status_str == QueryStatus.CLAIMED.value:
             total_found += 1
             found.append(entry)
@@ -55,7 +73,7 @@ def sherlock_search(username, timeout=30):
         'total_checked': total_checked,
         'total_found': total_found,
         'found': found,
-        'all': results,
+        'all': all_results,
     }
 
 
@@ -74,20 +92,31 @@ def instagram_analysis(username):
         'profile_pic_url': '',
         'external_url': '',
     }
+
     try:
         import instaloader
-        L = instaloader.Instaloader()
-        profile = instaloader.Profile.from_username(L.context, username)
-        result['found'] = True
-        result['bio'] = profile.biography or ''
-        result['full_name'] = profile.full_name or ''
-        result['followers'] = profile.followers
-        result['following'] = profile.followees
-        result['posts'] = profile.mediacount
-        result['is_private'] = profile.is_private
-        result['is_verified'] = profile.is_verified
-        result['profile_pic_url'] = profile.profile_pic_url or ''
-        result['external_url'] = profile.external_url or ''
+    except ImportError:
+        result['error'] = (
+            f'Modul instaloader belum terpasang. Jalankan: {INSTALOADER_INSTALL_HINT}'
+        )
+        return result
+
+    try:
+        loader = instaloader.Instaloader()
+        with provider_call('instagram'):
+            profile = instaloader.Profile.from_username(loader.context, username)
+        result.update({
+            'found': True,
+            'bio': profile.biography or '',
+            'full_name': profile.full_name or '',
+            'followers': profile.followers,
+            'following': profile.followees,
+            'posts': profile.mediacount,
+            'is_private': profile.is_private,
+            'is_verified': profile.is_verified,
+            'profile_pic_url': profile.profile_pic_url or '',
+            'external_url': profile.external_url or '',
+        })
     except instaloader.exceptions.ProfileNotExistsException:
         result['found'] = False
     except Exception as e:

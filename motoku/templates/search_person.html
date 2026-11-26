@@ -13,6 +13,7 @@
         <div class="card border-info">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="name" class="form-label">Nama / Keyword</label>
                         <div class="input-group">
@@ -53,6 +54,8 @@
                 <small class="text-secondary">
                     Masukkan nama seseorang, centang search engine yang diinginkan,
                     lalu klik Cari. Setiap link akan membuka hasil pencarian di tab baru.
+                    Hasil "Konteks Wikipedia" adalah enrichment ensiklopedis, bukan
+                    hasil web search secara keseluruhan.
                     <br><br>
                     <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Gunakan dengan bijak dan bertanggung jawab.</span>
                 </small>
@@ -68,7 +71,7 @@
         {% if search_results %}
         <div class="card border-info mb-3">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-list-ul"></i> Hasil Pencarian</span>
+                <span><i class="bi bi-book"></i> Konteks Wikipedia</span>
                 <small><i class="bi bi-book"></i> Wikipedia</small>
             </div>
             <div class="card-body p-0">
@@ -88,7 +91,7 @@
             </div>
         </div>
         {% elif results %}
-        <div class="alert alert-info"><i class="bi bi-info-circle"></i> Gagal mengambil hasil pencarian. Klik engine di bawah untuk mencari di tab baru.</div>
+        <div class="alert alert-info"><i class="bi bi-info-circle"></i> Tidak ada konteks Wikipedia untuk kata kunci ini. Gunakan deep link di bawah untuk mencari di search engine.</div>
         {% endif %}
 
         {% if results %}

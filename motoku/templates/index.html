@@ -6,9 +6,19 @@
         <i class="bi bi-radioactive text-success"></i> Motoku
     </h1>
     <p class="lead text-secondary">
-        OSINT Information Gathering Toolkit — 15 tools dalam satu web app
+        OSINT Information Gathering Toolkit — 17 tools dalam satu web app
     </p>
     <hr class="border-success w-25 mx-auto">
+    <form class="hero-search mx-auto mt-4" style="max-width: 640px" action="{{ url_for('unified_search') }}"
+          method="GET" data-unified-search>
+        <div class="input-group input-group-lg">
+            <span class="input-group-text bg-transparent border-success"><i class="bi bi-search text-success"></i></span>
+            <input class="form-control" type="search" name="q" autofocus autocomplete="off" required
+                   placeholder="Masukkan email, domain, URL, IP, username, nomor, atau nama">
+            <button class="btn btn-success" type="submit">Cari</button>
+        </div>
+        <div class="detected-type text-secondary text-start mt-1 ps-1"></div>
+    </form>
 </div>
 
 <div class="row g-4">
@@ -42,7 +52,7 @@
                 <div class="card-body text-center p-4">
                     <i class="bi bi-person-badge-fill text-warning" style="font-size: 2.5rem;"></i>
                     <h5 class="card-title mt-2">Username Tracker</h5>
-                    <p class="card-text text-secondary small">Cek 22 platform sosial media (IG, FB, TikTok, GitHub, dll)</p>
+                    <p class="card-text text-secondary small">Cek ~600 situs via dataset WhatsMyName, paralel</p>
                 </div>
             </div>
         </a>
@@ -65,8 +75,8 @@
             <div class="card card-hover border-danger h-100">
                 <div class="card-body text-center p-4">
                     <i class="bi bi-envelope-fill text-danger" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Email OSINT</h5>
-                    <p class="card-text text-secondary small">Reputasi email, breach detection, profil Gravatar</p>
+                    <h5 class="card-title mt-2">Email Intelligence</h5>
+                    <p class="card-text text-secondary small">MX/SMTP, disposable, HIBP breach, Gravatar, reputasi</p>
                 </div>
             </div>
         </a>
@@ -77,7 +87,7 @@
             <div class="card card-hover border-primary h-100">
                 <div class="card-body text-center p-4">
                     <i class="bi bi-building text-primary" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Domain WHOIS</h5>
+                    <h5 class="card-title mt-2">Domain RDAP/WHOIS</h5>
                     <p class="card-text text-secondary small">Registrar, tanggal kadaluarsa, name server, IP domain</p>
                 </div>
             </div>
@@ -103,6 +113,30 @@
                     <i class="bi bi-diagram-3 text-secondary" style="font-size: 2.5rem;"></i>
                     <h5 class="card-title mt-2">DNS Lookup</h5>
                     <p class="card-text text-secondary small">A, AAAA, MX, NS, TXT, CNAME, SOA, SPF, CAA, SRV</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('dns_security_page') }}" class="text-decoration-none">
+            <div class="card card-hover border-success h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-shield-lock-fill text-success" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">DNS Security</h5>
+                    <p class="card-text text-secondary small">Grade SPF, DKIM, DMARC, DNSSEC, MTA-STS, TLS-RPT, CAA</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('web_security_page') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-shield-check text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Headers &amp; TLS</h5>
+                    <p class="card-text text-secondary small">Grade security header HTTP + info sertifikat TLS</p>
                 </div>
             </div>
         </a>

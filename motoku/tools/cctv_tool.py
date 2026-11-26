@@ -1,12 +1,9 @@
-import json
-import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-DB_FILE = os.path.join(DATA_DIR, 'cctv_indonesia.json')
+import db
 
 CCTV_INDONESIA_BASE = 'https://cctvindonesia.id'
 
@@ -29,7 +26,8 @@ CAMERA_SIGNATURES = [
 def fetch_provinces():
     """Scrape province list from wilayah.php, return list of (code, name)."""
     try:
-        resp = requests.get(f'{CCTV_INDONESIA_BASE}/wilayah.php', timeout=15)
+        with db.provider_call('cctvindonesia.id'):
+            resp = requests.get(f'{CCTV_INDONESIA_BASE}/wilayah.php', timeout=15)
         resp.raise_for_status()
         html = resp.text
         pattern = r'/provinsi\.php\?kode=(\d+)[^>]*>([^<]+)</a>'
@@ -44,10 +42,11 @@ def fetch_provinces():
 def fetch_cameras_by_province(prov_code):
     """Fetch camera list for a province code from the CCTV Indonesia API."""
     try:
-        resp = requests.get(
-            f'{CCTV_INDONESIA_BASE}/api/cctv.php?prov={prov_code}',
-            timeout=15,
-        )
+        with db.provider_call('cctvindonesia.id'):
+            resp = requests.get(
+                f'{CCTV_INDONESIA_BASE}/api/cctv.php?prov={prov_code}',
+                timeout=15,
+            )
         resp.raise_for_status()
         data = resp.json()
         province_name = PROVINCE_CODE_MAP.get(prov_code, f'Provinsi {prov_code}')
@@ -114,9 +113,7 @@ def sync_from_cctv_indonesia(callback=None):
             added += 1
 
     merged = keep_existing + all_new
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(DB_FILE, 'w') as f:
-        json.dump({'cameras': merged}, f, indent=2)
+    db.replace_cameras(merged)
 
     if callback:
         callback(len(provinces), len(provinces),
@@ -127,31 +124,21 @@ def sync_from_cctv_indonesia(callback=None):
 
 
 def load_cameras():
-    if not os.path.exists(DB_FILE):
-        return []
-    with open(DB_FILE) as f:
-        data = json.load(f)
-    return data.get('cameras', [])
+    return db.load_cameras()
 
 
 def get_cities(cameras=None):
     if cameras is None:
-        cameras = load_cameras()
+        return db.get_cities()
     cities = {}
     for cam in cameras:
-        city = cam.get('city', 'Unknown')
-        if city not in cities:
-            cities[city] = 0
-        cities[city] += 1
+        city = cam.get('city') or 'Unknown'
+        cities[city] = cities.get(city, 0) + 1
     return cities
 
 
 def get_camera(cam_id):
-    cameras = load_cameras()
-    for cam in cameras:
-        if cam['id'] == cam_id:
-            return cam
-    return None
+    return db.get_camera(cam_id)
 
 
 def _check_path(ip, port, path, timeout=3):
@@ -182,7 +169,7 @@ def _check_path(ip, port, path, timeout=3):
                 'status': resp.status_code,
                 'server': resp.headers.get('Server', ''),
             }
-    except:
+    except Exception:
         pass
     return None
 
@@ -192,7 +179,7 @@ def _scan_target(target, timeout=3):
     results = []
     try:
         ip = socket.gethostbyname(target)
-    except:
+    except Exception:
         ip = target
 
     def check(port):
@@ -206,7 +193,7 @@ def _scan_target(target, timeout=3):
                     if result:
                         results.append(result)
                         break
-        except:
+        except Exception:
             pass
         finally:
             sock.close()
@@ -225,14 +212,4 @@ def scan(target, timeout=3):
 
 
 def save_camera(cam_data):
-    cameras = load_cameras()
-    for i, cam in enumerate(cameras):
-        if cam['id'] == cam_data['id']:
-            cameras[i] = cam_data
-            break
-    else:
-        cameras.append(cam_data)
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(DB_FILE, 'w') as f:
-        json.dump({'cameras': cameras}, f, indent=2)
-    return True
+    return db.save_camera(cam_data)

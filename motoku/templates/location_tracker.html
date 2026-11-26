@@ -13,6 +13,7 @@
         <div class="card border-danger">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="label" class="form-label">Label / Keterangan</label>
                         <input type="text" class="form-control" id="label" name="label" placeholder="Misal: Test ke teman" required>

@@ -1,0 +1,32 @@
+services:
+  motoku:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      MOTOKU_SECRET_KEY: ${MOTOKU_SECRET_KEY:-change-me-in-production}
+      MOTOKU_HOST: 0.0.0.0
+      MOTOKU_PORT: "5000"
+      MOTOKU_DEBUG: "0"
+      MOTOKU_AUTH_USER: ${MOTOKU_AUTH_USER:-}
+      MOTOKU_AUTH_PASSWORD: ${MOTOKU_AUTH_PASSWORD:-}
+      MOTOKU_DB_PATH: /app/data/motoku.db
+      MOTOKU_CSRF_ENABLED: "1"
+      MOTOKU_RATE_LIMIT_ENABLED: "1"
+      MOTOKU_REDIS_URL: redis://redis:6379/0
+      MOTOKU_HIBP_API_KEY: ${MOTOKU_HIBP_API_KEY:-}
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  redis-data:

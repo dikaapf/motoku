@@ -1,6 +1,17 @@
-flask>=3.0
-requests>=2.31
+flask>=3.0,<4
+requests>=2.31,<3
 phonenumbers>=8.13
 python-whois>=0.9
-python-Wappalyzer>=0.3
+python-Wappalyzer>=0.3,<1
 dnspython>=2.0
+beautifulsoup4>=4.12
+lxml>=5.0
+gunicorn>=21.2
+cryptography>=42
+
+# Optional shared cache/quota store (used when MOTOKU_REDIS_URL is set)
+redis>=5.0,<6
+
+# Deep username module (optional at runtime, installed by default here)
+sherlock-project>=0.15
+instaloader>=4.10

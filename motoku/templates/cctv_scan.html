@@ -13,6 +13,7 @@
         <div class="card border-warning">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="target" class="form-label">IP Address / Domain</label>
                         <div class="input-group">
@@ -101,6 +102,7 @@
                                 </a>
                                 {% if result.signature != 'unknown' %}
                                 <form method="POST" action="{{ url_for('cctv_add_from_scan') }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="url" value="{{ result.url }}">
                                     <input type="hidden" name="name" value="Camera {{ result.port }}">
                                     <input type="hidden" name="target" value="{{ target }}">
