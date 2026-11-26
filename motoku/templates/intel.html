@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, verdict_badge, copy_btn %}
+{% block title %}Threat Intel{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-shield-exclamation text-danger"></i> Threat Intel &amp; Enrichment</h2>
+    <p class="text-secondary">Reputasi IP, domain, URL, atau hash file dari Shodan/InternetDB, Censys, FOFA, Netlas, VirusTotal, AbuseIPDB, GreyNoise, IPinfo, RIPEstat, URLhaus, PhishTank, Safe Browsing, OTX, dan MalwareBazaar.</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-danger"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="indicator" class="form-label">Indikator</label>
+                <div class="input-group mb-3"><span class="input-group-text"><i class="bi bi-crosshair"></i></span>
+                    <input type="text" class="form-control form-control-lg" id="indicator" name="indicator" required
+                           placeholder="8.8.8.8 / example.com / https://… / sha256" value="{{ request.form.get('indicator', '') }}"></div>
+                <button type="submit" class="btn btn-danger w-100"><i class="bi bi-search"></i> Periksa</button>
+            </form>
+            <small class="text-secondary d-block mt-2">Sumber tanpa API key ditampilkan sebagai "butuh key". Atur key di <code>.env</code>; lihat <a class="text-info" href="{{ url_for('providers_dashboard') }}">Provider</a>.</small>
+        </div></div>
+        {% if report %}
+        {% set s = report.summary %}
+        <div class="card border-secondary mt-3"><div class="card-body text-center">
+            <div class="mb-2">{{ verdict_badge(s.verdict) }}</div>
+            <h5 class="text-break mb-1"><code>{{ report.indicator }}</code>{{ copy_btn(report.indicator) }}</h5>
+            <small class="text-secondary">{{ report.kind|upper }} · {{ s.sources_ok }} sumber menjawab · {{ s.malicious }} berbahaya · {{ s.suspicious }} mencurigakan · {{ s.clean }} bersih</small>
+            {% if s.sources_no_key %}<small class="d-block text-secondary">{{ s.sources_no_key }} sumber butuh API key</small>{% endif %}
+        </div></div>
+        {% if report.cves %}
+        <div class="card border-warning mt-3"><div class="card-body small">
+            <strong>{{ report.cves|length }} CVE</strong> dilaporkan Shodan untuk IP ini.
+            <div class="mt-1">{% for c in report.cves[:12] %}<a class="badge bg-dark border border-warning text-warning me-1 mb-1 text-decoration-none" href="{{ url_for('cve', q=c, auto=1) }}">{{ c }}</a>{% endfor %}{% if report.cves|length > 12 %} …{% endif %}</div>
+        </div></div>
+        {% endif %}
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if report %}
+        {{ result_data(report) }}
+        {% call result_card('Hasil per sumber', 'bi-list-check', 'danger', 'intel-' ~ report.indicator|replace('/', '_')|replace(':', '_'), 'results') %}
+        <div class="list-group list-group-flush">
+        {% for r in report.results %}
+            <div class="list-group-item bg-transparent {% if r.status == 'no_key' %}text-secondary{% endif %}">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span><strong>{{ r.source }}</strong> <small class="text-secondary">{{ r.category }}</small></span>
+                    <span>
+                        {% if r.status == 'ok' or r.status == 'not_found' %}{{ verdict_badge(r.verdict) }}
+                        {% elif r.status == 'no_key' %}<span class="badge bg-dark border border-secondary">butuh key</span>
+                        {% else %}<span class="badge bg-danger">error</span>{% endif %}
+                        {% if r.link %}<a href="{{ r.link }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-info small"><i class="bi bi-box-arrow-up-right"></i></a>{% endif %}
+                    </span>
+                </div>
+                <small class="{% if r.status == 'error' %}text-danger{% else %}text-secondary{% endif %}">{{ r.summary }}</small>
+                {% if r.status == 'ok' and r.data %}
+                <details class="small mt-1"><summary class="text-secondary">Detail</summary>
+                    <pre class="job-log mb-0">{{ r.data|tojson(indent=2) }}</pre></details>
+                {% endif %}
+            </div>
+        {% endfor %}
+        </div>
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

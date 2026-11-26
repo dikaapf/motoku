@@ -12,6 +12,8 @@ DOMAIN_RE = re.compile(
     r'^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+'
     r'(?:[A-Za-z]{2,63}|xn--[A-Za-z0-9\-]{2,59})$'
 )
+HASH_RE = re.compile(r'^(?:[a-fA-F0-9]{32}|[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$')
+CVE_RE = re.compile(r'^CVE-\d{4}-\d{4,}$', re.I)
 PHONE_RE = re.compile(r'^\+?[\d\s\-().]{7,20}$')
 USERNAME_RE = re.compile(r'^@?[A-Za-z0-9._\-]{2,40}$')
 
@@ -24,10 +26,18 @@ ROUTES = {
         ('username', 'Username (bagian lokal)', 'username'),
     ],
     'ip': [
+        ('intel', 'Threat Intel (reputasi)', 'indicator'),
         ('ip_track', 'IP Tracker', 'ip'),
         ('portscan', 'Port Scan', 'target'),
     ],
+    'hash': [
+        ('intel', 'Threat Intel (hash file)', 'indicator'),
+    ],
+    'cve': [
+        ('cve', 'CVE + EPSS + KEV', 'query'),
+    ],
     'url': [
+        ('intel', 'Threat Intel (URL)', 'indicator'),
         ('web_security_page', 'Security Headers & TLS', 'url'),
         ('tech', 'Tech Stack', 'url'),
         ('tls_page', 'TLS Scan & CT', 'host'),
@@ -43,6 +53,9 @@ ROUTES = {
         ('subdomain', 'Subdomain', 'domain'),
         ('tls_page', 'TLS Scan & CT', 'host'),
         ('archive_page', 'Wayback & urlscan', 'domain'),
+        ('intel', 'Threat Intel (reputasi)', 'indicator'),
+        ('typosquat_page', 'Typosquatting', 'domain'),
+        ('cloud', 'Cloud bucket & GitHub leak', 'keyword'),
         ('tech', 'Tech Stack', 'url'),
         ('dorks', 'Google Dorks', 'target'),
     ],
@@ -61,6 +74,8 @@ ROUTES = {
 TYPE_LABELS = {
     'email': 'Email',
     'ip': 'Alamat IP',
+    'hash': 'Hash file',
+    'cve': 'CVE',
     'url': 'URL',
     'domain': 'Domain',
     'phone': 'Nomor telepon',
@@ -77,6 +92,12 @@ def detect(query):
 
     if EMAIL_RE.match(q):
         return 'email', q.lower()
+
+    if CVE_RE.match(q):
+        return 'cve', q.upper()
+
+    if HASH_RE.match(q):
+        return 'hash', q.lower()
 
     try:
         return 'ip', str(ipaddress.ip_address(q.strip('[]')))

@@ -56,6 +56,16 @@ All settings are environment variables (see `.env.example`):
 | `MOTOKU_CHROMIUM_PATH` | auto | Chromium binary for screenshots (auto-detected). |
 | `MOTOKU_NMAP_PATH` | `nmap` | nmap binary; port scans fall back to TCP connect when absent. |
 
+Threat-intel API keys (all optional; every source without a key is shown as
+"butuh key" and skipped): `MOTOKU_SHODAN_API_KEY`, `MOTOKU_CENSYS_API_ID` +
+`MOTOKU_CENSYS_API_SECRET`, `MOTOKU_FOFA_API_KEY`, `MOTOKU_NETLAS_API_KEY`,
+`MOTOKU_VT_API_KEY`, `MOTOKU_ABUSEIPDB_API_KEY`, `MOTOKU_GREYNOISE_API_KEY`,
+`MOTOKU_IPINFO_TOKEN`, `MOTOKU_ABUSECH_API_KEY` (URLhaus + MalwareBazaar),
+`MOTOKU_PHISHTANK_API_KEY`, `MOTOKU_GSB_API_KEY`, `MOTOKU_NVD_API_KEY`,
+`MOTOKU_GITHUB_TOKEN`. Free sources that need no key: Shodan InternetDB,
+Shodan CVEDB, FIRST EPSS, CISA KEV, RIPEstat, IPinfo (limited), GreyNoise
+community, OTX, PhishTank.
+
 Debug mode is disabled by default, and the app binds to localhost unless
 configured otherwise.
 
@@ -196,3 +206,28 @@ Datasets: [WhatsMyName](https://github.com/WebBreacher/WhatsMyName) (CC BY-SA
   the pipeline continues.
 
 Only scan assets you own or are authorised to test.
+
+## S3 — Threat intel & enrichment
+
+- **Threat intel** (`/intel`): one indicator (IP, domain, URL, MD5/SHA1/SHA256)
+  checked in parallel against Shodan, InternetDB, Censys, FOFA, Netlas,
+  VirusTotal, AbuseIPDB, GreyNoise, IPinfo, RIPEstat (+RPKI), URLhaus, PhishTank,
+  Google Safe Browsing, OTX and MalwareBazaar. Results are normalised to a
+  verdict (malicious / suspicious / clean / unknown) and aggregated.
+- **CVE mapping** (`/cve`): CVE ID, CPE or "product version" → CVEs with CVSS,
+  EPSS (FIRST) and CISA KEV, prioritised P1–P4. nmap CPEs such as
+  `openssh:6.6.1p1` fall back to `6.6.1` → `6.6` when the CPE dictionary lacks
+  the exact version.
+- **Typosquatting** (`/typosquat`): dnstwist-style permutation engine (13
+  techniques incl. IDN homoglyphs and bitsquatting), concurrent resolution,
+  MX-aware risk rating, plus IDN homograph analysis (mixed scripts, confusables).
+- **Cloud & leaks** (`/cloud`): S3 (region-aware), GCS and Azure Blob bucket
+  discovery with anonymous-listing check (object names only); GitHub code
+  search for the domain with secret classification and masking.
+- **Provider dashboard** (`/providers`): every provider grouped by category with
+  key state, local daily quota, provider-reported quota (AbuseIPDB headers,
+  Shodan/VirusTotal/GitHub account endpoints), cache-hit ratio and a 14-day
+  usage chart.
+- **Recon enrichment**: the `/recon` pipeline now adds threat intel for the
+  domain and its IPs, CVE mapping from port-scan CPEs and InternetDB, typosquats
+  and cloud buckets, all feeding the prioritised findings.

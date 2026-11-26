@@ -4,7 +4,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <h2><i class="bi bi-radar text-success"></i> Recon Domain Lengkap</h2>
-        <p class="text-secondary">Satu input domain → RDAP, DNS security, subdomain multi-source, takeover, HTTP probe, screenshot, TLS + CT, port scan, Wayback/urlscan/favicon. Berjalan di background job.</p>
+        <p class="text-secondary">Satu input domain → RDAP, DNS security, subdomain multi-source, takeover, HTTP probe, screenshot, TLS + CT, port scan, Wayback/urlscan/favicon, threat intel, CVE (EPSS/KEV), typosquatting, dan bucket cloud. Berjalan di background job.</p>
     </div>
 </div>
 <div class="row">
@@ -20,10 +20,16 @@
                     <label class="form-check-label" for="opt-ports">Port scan domain utama {% if nmap_available %}<small class="text-success">(nmap)</small>{% endif %}</label></div>
                 <div class="form-check"><input class="form-check-input" type="checkbox" name="screenshots" value="1" id="opt-shots" {% if screenshot_backend %}checked{% else %}disabled{% endif %}>
                     <label class="form-check-label" for="opt-shots">Screenshot host hidup {% if screenshot_backend %}<small class="text-success">({{ screenshot_backend }})</small>{% else %}<small class="text-secondary">(Chromium/Playwright tidak ditemukan)</small>{% endif %}</label></div>
-                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="archive" value="1" id="opt-archive" checked>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="archive" value="1" id="opt-archive" checked>
                     <label class="form-check-label" for="opt-archive">Wayback / urlscan / favicon</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="intel" value="1" id="opt-intel" checked>
+                    <label class="form-check-label" for="opt-intel">Threat intel + CVE (EPSS, KEV)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="typosquat" value="1" id="opt-typo" checked>
+                    <label class="form-check-label" for="opt-typo">Typosquatting (600 variasi)</label></div>
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="cloud" value="1" id="opt-cloud" checked>
+                    <label class="form-check-label" for="opt-cloud">Bucket cloud (S3/GCS/Azure)</label></div>
                 <button type="submit" class="btn btn-success w-100"><i class="bi bi-play-fill"></i> Mulai Recon</button>
-                <small class="text-secondary d-block mt-2">Estimasi 1–5 menit tergantung jumlah subdomain. Gunakan hanya pada aset yang Anda miliki atau berizin.</small>
+                <small class="text-secondary d-block mt-2">Estimasi 2–6 menit tergantung jumlah subdomain. Gunakan hanya pada aset yang Anda miliki atau berizin.</small>
             </form>
         </div></div>
     </div>

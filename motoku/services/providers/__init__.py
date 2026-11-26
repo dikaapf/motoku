@@ -27,8 +27,11 @@ _registry = {}
 
 class Provider:
     def __init__(self, name, *, ttl=3600, daily_quota=None, key_env=None,
-                 description='', homepage=''):
+                 description='', homepage='', category='Umum', key_optional=False):
         self.name = name
+        self.category = category
+        # key_optional: works without a key, a key only raises limits.
+        self.key_optional = key_optional
         self.ttl = ttl
         self.daily_quota = daily_quota
         self.key_env = key_env
@@ -42,7 +45,20 @@ class Provider:
 
     @property
     def configured(self):
-        return not self.key_env or bool(self.api_key)
+        return not self.key_env or self.key_optional or bool(self.api_key)
+
+    @property
+    def has_key(self):
+        return bool(self.key_env and self.api_key)
+
+    # ── provider-reported quota (from API headers or account endpoints) ──
+    def set_remote_quota(self, remaining=None, limit=None, note=None):
+        cache.set(f'remote:{self.name}', {'remaining': remaining, 'limit': limit, 'note': note,
+                                          'at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')},
+                  7 * 86400)
+
+    def remote_quota(self):
+        return cache.get(f'remote:{self.name}')
 
     # ── quota ──
     def _quota_key(self):
@@ -108,6 +124,10 @@ class Provider:
     def status(self):
         return {
             'name': self.name,
+            'category': self.category,
+            'key_optional': self.key_optional,
+            'has_key': self.has_key,
+            'remote_quota': self.remote_quota(),
             'description': self.description,
             'homepage': self.homepage,
             'configured': self.configured,
@@ -127,6 +147,7 @@ def _record(name, success=True, cached=False):
             db.record_provider_cache_hit(name)
         else:
             db.record_provider_call(name, success=success)
+        db.record_provider_daily(name, cached=cached, success=success)
     except Exception:
         pass
 

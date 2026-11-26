@@ -3,7 +3,7 @@
 {% block content %}
 <h2><i class="bi bi-list-task text-info"></i> Background Jobs</h2>
 <p class="text-secondary">Backend: <span class="badge bg-secondary">{{ backend }}</span> · 50 job terakhir</p>
-{% set links = {'recon': 'recon_report', 'subdomain': 'subdomain', 'portscan': 'portscan', 'username': 'username'} %}
+{% set links = {'recon': 'recon_report', 'subdomain': 'subdomain', 'portscan': 'portscan', 'username': 'username', 'typosquat': 'typosquat_page', 'cloud': 'cloud'} %}
 <div class="table-responsive"><table class="table table-dark table-striped table-hover align-middle">
     <thead><tr><th>Jenis</th><th>Target</th><th>Status</th><th>Pesan</th><th>Dibuat</th><th>Selesai</th></tr></thead>
     <tbody>{% for j in jobs %}

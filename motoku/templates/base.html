@@ -53,6 +53,11 @@
                             <li><a class="dropdown-item" href="{{ url_for('tls_page') }}"><i class="bi bi-lock-fill text-success"></i> TLS Scan &amp; CT</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('archive_page') }}"><i class="bi bi-clock-history text-warning"></i> Wayback &amp; urlscan</a></li>
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('intel') }}"><i class="bi bi-shield-exclamation text-danger"></i> Threat Intel</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('cve') }}"><i class="bi bi-bug-fill text-warning"></i> CVE · EPSS · KEV</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('typosquat_page') }}"><i class="bi bi-type text-warning"></i> Typosquatting</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('cloud') }}"><i class="bi bi-cloud-haze2-fill text-info"></i> Cloud &amp; GitHub Leak</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('portscan') }}"><i class="bi bi-plug text-danger"></i> Port Scan</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('tech') }}"><i class="bi bi-cpu text-info"></i> Tech Stack</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('search_person') }}"><i class="bi bi-person-search text-info"></i> Search Person</a></li>
@@ -64,7 +69,8 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('flight_radar') }}"><i class="bi bi-airplane-engines text-primary"></i> Flight Radar</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('status') }}"><i class="bi bi-activity text-success"></i> Status &amp; Quota</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('status') }}"><i class="bi bi-activity text-success"></i> Status</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('providers_dashboard') }}"><i class="bi bi-speedometer2 text-success"></i> Provider &amp; Kuota</a></li>
                         </ul>
                     </li>
                 </ul>

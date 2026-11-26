@@ -12,7 +12,7 @@ Satuan: 1 PD ≈ 6–8 jam efektif. Solo full-time ≈ 4–5 bulan; 2 dev parale
 | **S0** ✅ | Stabilisasi & fondasi | 1 sprint | ~10 PD | — |
 | **S1** ✅ | Core OSINT upgrade | 1 sprint | ~13 PD | S0 |
 | **S2** ✅ | Infra recon (domain/IP) | 1.5 sprint | ~16.5 PD | S0, S1 |
-| **S3** | Threat intel & enrichment | 1.5 sprint | ~14.5 PD | S2 |
+| **S3** ✅ | Threat intel & enrichment | 1.5 sprint | ~14.5 PD | S2 |
 | **S4** | People, image, geo | 1.5 sprint | ~12.5 PD | S1 |
 | **S5** | Case management & report | 2 sprint | ~19.5 PD | S2, S4 |
 | **S6** | Polish & scale (opsional) | 1 sprint | ~9 PD | S5 |
@@ -94,6 +94,10 @@ Scan username kini juga berjalan sebagai job (menutup catatan S1).
 | 3.7 | Provider quota dashboard | 1.5 | operasional |
 
 **DoD S3:** hasil recon diperkaya reputasi, CVE, dan temuan aset terkait.
+
+**Status S3 (2026-11-27): selesai.** 15 sumber threat intel (sumber tanpa key tetap jalan dengan sumber gratis),
+CVE via CVEDB + EPSS + KEV, typosquat engine sendiri (tanpa dependensi dnstwist), bucket finder S3/GCS/Azure,
+GitHub secret scan dengan masking, dashboard `/providers`. Recon pipeline diperkaya otomatis; test di `tests/test_s3.py`.
 
 ---
 

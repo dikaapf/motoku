@@ -55,7 +55,8 @@ def test_search_page_and_redirect(client):
 def test_api_detect(client):
     data = client.get('/api/detect?q=8.8.8.8').get_json()
     assert data['type'] == 'ip'
-    assert data['tools'][0]['endpoint'] == 'ip_track'
+    assert data['tools'][0]['endpoint'] == 'intel'
+    assert 'ip_track' in [t['endpoint'] for t in data['tools']]
 
 
 # ── 1.7 Provider abstraction, cache & quota ──

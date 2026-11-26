@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import result_data, result_card, job_progress, grade_badge, risk_badge, copy_btn %}
+{% from "_macros.html" import result_data, result_card, job_progress, grade_badge, risk_badge, copy_btn, verdict_badge, cve_table %}
 {% block title %}Recon {{ job.target }}{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
@@ -22,8 +22,8 @@
     {% from "_macros.html" import export_toolbar %}{{ export_toolbar('recon-' ~ report.domain, 'summary.findings') }}
 </div>
 <div class="row g-2 mb-3 text-center">
-    {% for label, value in [('Subdomain', s.subdomains), ('Resolve', s.alive_dns), ('HTTP hidup', s.alive_http), ('Port terbuka', s.open_ports), ('Takeover', s.takeover), ('DNS grade', s.dns_grade or '-'), ('TLS grade', s.tls_grade or '-')] %}
-    <div class="col-6 col-md"><div class="card border-secondary stat-tile h-100"><div class="card-body py-2"><h3 class="{% if label == 'Takeover' and value %}text-danger{% endif %}">{{ value }}</h3><small>{{ label }}</small></div></div></div>
+    {% for label, value in [('Subdomain', s.subdomains), ('HTTP hidup', s.alive_http), ('Port terbuka', s.open_ports), ('Takeover', s.takeover), ('CVE', s.cves or 0), ('KEV', s.kev or 0), ('Typosquat', s.typosquats or 0), ('Bucket publik', s.public_buckets or 0), ('DNS grade', s.dns_grade or '-'), ('TLS grade', s.tls_grade or '-')] %}
+    <div class="col-6 col-md-3 col-xl"><div class="card border-secondary stat-tile h-100"><div class="card-body py-2"><h3 class="{% if label in ('Takeover', 'KEV', 'Bucket publik') and value %}text-danger{% endif %}">{{ value }}</h3><small>{{ label }}</small></div></div></div>
     {% endfor %}
 </div>
 
@@ -85,6 +85,31 @@
     {% endcall %}
     {% endif %}
 
+    {% set cv = report.cve %}
+    {% if cv and cv.cves %}
+    {% call result_card(cv.summary.total ~ ' CVE · ' ~ cv.summary.kev ~ ' KEV · ' ~ cv.summary.p1 ~ ' P1', 'bi-bug-fill', 'warning', toolbar=False) %}
+    {% for m in cv.cpes %}<small class="d-block text-secondary">{{ m.cpe }} → {{ m.matched or '-' }} ({{ m.count }})</small>{% endfor %}
+    <div class="mt-2">{{ cve_table(cv.cves, 40) }}</div>
+    {% endcall %}
+    {% endif %}
+
+    {% set ty = report.typosquat %}
+    {% if ty %}
+    {% call result_card(ty.registered_count ~ ' domain typosquat terdaftar', 'bi-type', 'warning', toolbar=False) %}
+    <div class="table-responsive" style="max-height: 320px"><table class="table table-dark table-sm mb-0"><tbody>
+    {% for r in ty.registered[:60] %}<tr><td><code>{{ r.domain }}</code></td><td><small>{{ r.fuzzer }}</small></td><td>{% if r.mx %}<span class="badge bg-warning text-dark">MX</span>{% endif %}{% if r.same_ip %}<span class="badge bg-success">IP sama</span>{% endif %}</td><td>{{ risk_badge(r.risk) }}</td></tr>
+    {% else %}<tr><td class="text-success">Tidak ada.</td></tr>{% endfor %}</tbody></table></div>
+    {% endcall %}
+    {% endif %}
+
+    {% set cl = report.cloud %}
+    {% if cl %}
+    {% call result_card('Cloud storage (' ~ cl.public ~ ' publik dari ' ~ cl.buckets|length ~ ')', 'bi-bucket', 'info', toolbar=False) %}
+    {% for b in cl.buckets %}<div class="small"><span class="badge bg-{{ 'danger' if b.status == 'public' else 'secondary' }}">{{ b.status }}</span> {{ b.provider }} <code>{{ b.name }}</code>{% if b.sample %} — {{ b.sample[:4]|join(', ') }}{% endif %}</div>
+    {% else %}<p class="small text-success mb-0">Tidak ada bucket dengan nama kandidat.</p>{% endfor %}
+    {% endcall %}
+    {% endif %}
+
     {% set ar = report.archive %}
     {% if ar %}
     {% call result_card('Arsip & Pivot', 'bi-clock-history', 'warning', toolbar=False) %}
@@ -108,6 +133,19 @@
         <tr><td>IP</td><td>{{ w.ip }}</td></tr>
         <tr><td>NS</td><td>{{ (w.name_servers or [])|join(', ') }}</td></tr>
     </tbody></table>
+    {% endcall %}
+    {% endif %}
+
+    {% set ti = report.threat_intel %}
+    {% if ti %}
+    {% call result_card('Threat Intel', 'bi-shield-exclamation', 'danger', toolbar=False) %}
+    {% for lk in ti.lookups %}
+    <div class="mb-2">
+        <div class="d-flex justify-content-between"><code class="small">{{ lk.indicator }}</code>{{ verdict_badge(lk.summary.verdict) }}</div>
+        {% for r in lk.results if r.status == 'ok' %}<small class="d-block text-secondary">{{ r.source }}: {{ r.summary[:70] }}</small>{% endfor %}
+    </div>
+    {% endfor %}
+    <a class="small text-info" href="{{ url_for('providers_dashboard') }}">Tambah API key untuk sumber lain →</a>
     {% endcall %}
     {% endif %}
 

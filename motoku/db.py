@@ -64,6 +64,15 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_kind_created ON jobs(kind, created_at);
 
+CREATE TABLE IF NOT EXISTS provider_daily (
+    provider TEXT NOT NULL,
+    day TEXT NOT NULL,
+    calls INTEGER NOT NULL DEFAULT 0,
+    errors INTEGER NOT NULL DEFAULT 0,
+    cache_hits INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (provider, day)
+);
+
 CREATE TABLE IF NOT EXISTS provider_usage (
     provider TEXT PRIMARY KEY,
     calls INTEGER NOT NULL DEFAULT 0,
@@ -323,6 +332,36 @@ def provider_call(provider):
         raise
     else:
         record_provider_call(provider, success=True)
+
+
+def record_provider_daily(provider, cached=False, success=True):
+    day = datetime.now().strftime('%Y-%m-%d')
+    calls, errors, hits = (0, 0, 1) if cached else (1, 0 if success else 1, 0)
+    with connection() as conn:
+        conn.execute(
+            'INSERT INTO provider_daily (provider, day, calls, errors, cache_hits)'
+            ' VALUES (?, ?, ?, ?, ?)'
+            ' ON CONFLICT(provider, day) DO UPDATE SET'
+            ' calls = calls + excluded.calls, errors = errors + excluded.errors,'
+            ' cache_hits = cache_hits + excluded.cache_hits',
+            (provider, day, calls, errors, hits),
+        )
+
+
+def provider_history(days=14):
+    """Return ``{provider: {day: {calls, errors, cache_hits}}}`` for recent days."""
+    from datetime import timedelta
+
+    since = (datetime.now() - timedelta(days=days - 1)).strftime('%Y-%m-%d')
+    with connection() as conn:
+        rows = conn.execute(
+            'SELECT provider, day, calls, errors, cache_hits FROM provider_daily'
+            ' WHERE day >= ? ORDER BY day', (since,)).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r['provider'], {})[r['day']] = {
+            'calls': r['calls'], 'errors': r['errors'], 'cache_hits': r['cache_hits']}
+    return out
 
 
 def provider_usage():

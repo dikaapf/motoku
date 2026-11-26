@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, cve_table, risk_badge %}
+{% block title %}CVE Lookup{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-bug-fill text-warning"></i> CVE Mapping · EPSS · CISA KEV</h2>
+    <p class="text-secondary">Cari CVE berdasarkan ID, CPE, atau produk + versi. Prioritas: <span class="badge bg-danger">P1</span> ada di KEV atau EPSS tinggi → <span class="badge bg-secondary">P4</span> risiko rendah.</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-warning"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="query" class="form-label">CVE / CPE / produk versi</label>
+                <input type="text" class="form-control form-control-lg mb-2" id="query" name="query" required
+                       placeholder="CVE-2021-44228" value="{{ request.form.get('query', '') }}">
+                <small class="text-secondary d-block mb-3">Contoh: <code>CVE-2021-44228</code>, <code>cpe:2.3:a:apache:http_server:2.4.7</code>, <code>openssh 7.4</code></small>
+                <button type="submit" class="btn btn-warning w-100"><i class="bi bi-search"></i> Cari</button>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if result %}
+        {{ result_data(result) }}
+        {% if result.mode == 'cve' %}
+        {% set c = result.cve %}
+        {% call result_card(c.id, 'bi-bug', 'warning', 'cve-' ~ c.id) %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge bg-{{ {'P1': 'danger', 'P2': 'warning text-dark', 'P3': 'info text-dark', 'P4': 'secondary'}[c.priority] }} fs-6">{{ c.priority }}</span>
+            {{ risk_badge(c.severity if c.severity != 'none' else 'info') }}
+            <span class="badge bg-secondary">CVSS {{ c.cvss if c.cvss is not none else '-' }}{% if c.cvss_version %} (v{{ c.cvss_version }}){% endif %}</span>
+            <span class="badge bg-secondary">EPSS {{ '%.2f%%'|format(c.epss * 100) if c.epss is not none else '-' }}{% if c.epss_percentile %} · persentil {{ '%.0f'|format(c.epss_percentile * 100) }}{% endif %}</span>
+            {% if c.kev %}<span class="badge bg-danger">CISA KEV</span>{% endif %}
+        </div>
+        <p>{{ c.summary }}</p>
+        {% if c.kev_info %}
+        <div class="alert alert-danger small">
+            <strong>{{ c.kev_info.name }}</strong><br>
+            Masuk KEV {{ c.kev_info.added }} · tenggat federal {{ c.kev_info.due }} · ransomware: {{ c.kev_info.ransomware }}<br>
+            Tindakan: {{ c.kev_info.action }}
+        </div>
+        {% endif %}
+        {% if c.propose_action %}<p class="small text-warning">{{ c.propose_action }}</p>{% endif %}
+        {% if c.references %}<details class="small"><summary class="text-secondary">Referensi ({{ c.references|length }})</summary><ul>{% for r in c.references %}<li class="text-break"><a class="text-info" href="{{ r }}" target="_blank" rel="noopener noreferrer">{{ r }}</a></li>{% endfor %}</ul></details>{% endif %}
+        <small class="text-secondary">Sumber: {{ c.source }} · terbit {{ c.published }}</small>
+        {% endcall %}
+        {% else %}
+        {% set s = result.summary %}
+        <div class="row g-2 mb-3 text-center">
+            {% for label, v in [('CVE', s.total), ('KEV', s.kev), ('Critical', s.critical), ('High', s.high), ('P1', s.p1)] %}
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0 {% if label in ('KEV', 'P1') and v %}text-danger{% endif %}">{{ v }}</h4><small>{{ label }}</small></div></div></div>
+            {% endfor %}
+        </div>
+        {% call result_card('CVE untuk ' ~ result.query, 'bi-bug', 'warning', 'cves', 'cves') %}
+        {% for m in result.cpes %}<small class="d-block text-secondary">CPE <code>{{ m.cpe }}</code> → {{ m.matched or 'tidak ada di dictionary' }} ({{ m.count }} CVE)</small>{% endfor %}
+        <div class="mt-2">{{ cve_table(result.cves) }}</div>
+        {% endcall %}
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

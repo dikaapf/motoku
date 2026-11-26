@@ -34,6 +34,8 @@ from services.providers import registry as _provider_declarations  # noqa: F401
 from tools import (
     archive_tool,
     cctv_tool,
+    cloud_tool,
+    cve_tool,
     deep_username,
     dns_security,
     dns_tool,
@@ -48,7 +50,9 @@ from tools import (
     search_tool,
     subdomain_tool,
     tech_tool,
+    threat_intel,
     tls_scan,
+    typosquat,
     web_security,
     wmn_tool,
 )
@@ -466,11 +470,8 @@ def recon():
         except ValueError as e:
             error = str(e)
         else:
-            options = {
-                'ports': request.form.get('ports') == '1',
-                'screenshots': request.form.get('screenshots') == '1',
-                'archive': request.form.get('archive') == '1',
-            }
+            options = {key: request.form.get(key) == '1'
+                       for key in ('ports', 'screenshots', 'archive', 'intel', 'typosquat', 'cloud')}
             job_id = jobs.enqueue('recon', domain_val, {'domain': domain_val, 'options': options})
             return redirect(url_for('recon_report', job_id=job_id))
     return render_template('recon.html', error=error, recent=db.list_jobs('recon', 15),
@@ -489,6 +490,112 @@ def recon_report(job_id):
 @app.route('/screenshots/<path:name>')
 def screenshot_file(name):
     return send_from_directory(http_probe.SCREENSHOT_DIR, name, mimetype='image/png')
+
+
+# ── THREAT INTEL ──
+@app.route('/intel', methods=['GET', 'POST'])
+def intel():
+    report = error = None
+    if request.method == 'POST':
+        indicator = request.form.get('indicator', '').strip()
+        try:
+            report = threat_intel.lookup(indicator)
+        except ValueError as e:
+            error = str(e)
+    return render_template('intel.html', report=report, error=error)
+
+
+# ── CVE ──
+@app.route('/cve', methods=['GET', 'POST'])
+def cve():
+    result = error = None
+    if request.method == 'POST':
+        try:
+            result = cve_tool.search(request.form.get('query', ''))
+        except ValueError as e:
+            error = str(e)
+        except Exception as e:
+            error = f'Gagal mengambil data CVE: {e}'
+    return render_template('cve.html', result=result, error=error)
+
+
+# ── TYPOSQUATTING ──
+@app.route('/typosquat', methods=['GET', 'POST'])
+def typosquat_page():
+    error = None
+    homograph = None
+    if request.method == 'POST':
+        domain_val = request.form.get('domain', '').strip()
+        try:
+            typosquat.split_domain(domain_val)
+        except ValueError as e:
+            error = str(e)
+        else:
+            if request.form.get('mode') == 'homograph':
+                homograph = typosquat.analyse_homograph(domain_val)
+            else:
+                job_id = jobs.enqueue('typosquat', domain_val, {'domain': domain_val})
+                return redirect(url_for('typosquat_page', job=job_id))
+    job, data = _job_from_args('typosquat')
+    if job and job['status'] == 'failed':
+        error = job['error']
+    return render_template('typosquat.html', data=data, job=job, error=error, homograph=homograph,
+                           domain=(job or {}).get('target', ''))
+
+
+# ── CLOUD STORAGE & GITHUB LEAKS ──
+@app.route('/cloud', methods=['GET', 'POST'])
+def cloud():
+    error = None
+    if request.method == 'POST':
+        keyword = request.form.get('keyword', '').strip()
+        providers = [p for p in request.form.getlist('providers') if p in cloud_tool.CHECKS] or \
+            ['s3', 'gcs', 'azure']
+        try:
+            cloud_tool.candidates(keyword)
+        except ValueError as e:
+            error = str(e)
+        else:
+            job_id = jobs.enqueue('cloud', keyword, {'keyword': keyword, 'providers': providers,
+                                                     'github': request.form.get('github') == '1'})
+            return redirect(url_for('cloud', job=job_id))
+    job, data = _job_from_args('cloud')
+    if job and job['status'] == 'failed':
+        error = job['error']
+    return render_template('cloud.html', data=data, job=job, error=error,
+                           keyword=(job or {}).get('target', ''),
+                           github_configured=provider_registry.get('github').configured)
+
+
+# ── PROVIDER DASHBOARD ──
+@app.route('/providers')
+def providers_dashboard():
+    from datetime import datetime, timedelta
+
+    days = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(13, -1, -1)]
+    history = db.provider_history(len(days))
+    usage = {row['provider']: row for row in db.provider_usage()}
+    groups = {}
+    for provider in provider_registry.all_providers():
+        item = provider.status()
+        item['usage'] = usage.get(provider.name) or {'calls': 0, 'errors': 0, 'cache_hits': 0}
+        item['history'] = [history.get(provider.name, {}).get(d, {}).get('calls', 0) for d in days]
+        total = item['usage']['calls'] + item['usage']['cache_hits']
+        item['hit_ratio'] = round(100 * item['usage']['cache_hits'] / total) if total else None
+        item['quota_pct'] = round(100 * item['used_today'] / item['daily_quota']) \
+            if item['daily_quota'] else None
+        groups.setdefault(provider.category, []).append(item)
+    if request.args.get('format') == 'json':
+        return jsonify({'days': days, 'groups': groups})
+    return render_template('providers.html', groups=dict(sorted(groups.items())), days=days,
+                           cache_info=result_cache.info())
+
+
+@app.route('/providers/refresh', methods=['POST'])
+def providers_refresh():
+    """Fetch provider-reported quotas from account endpoints where available."""
+    refreshed = threat_intel.refresh_remote_quotas()
+    return jsonify({'refreshed': refreshed})
 
 
 # ── JOBS ──

@@ -6,7 +6,7 @@
         <i class="bi bi-radioactive text-success"></i> Motoku
     </h1>
     <p class="lead text-secondary">
-        OSINT Information Gathering Toolkit — 20 tools dalam satu web app
+        OSINT Information Gathering Toolkit — 24 tools dalam satu web app
     </p>
     <hr class="border-success w-25 mx-auto">
     <form class="hero-search mx-auto mt-4" style="max-width: 640px" action="{{ url_for('unified_search') }}"
@@ -176,6 +176,54 @@
                     <i class="bi bi-clock-history text-warning" style="font-size: 2.5rem;"></i>
                     <h5 class="card-title mt-2">Wayback &amp; urlscan</h5>
                     <p class="card-text text-secondary small">URL historis, scan publik urlscan.io, favicon hash untuk Shodan</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('intel') }}" class="text-decoration-none">
+            <div class="card card-hover border-danger h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-shield-exclamation text-danger" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Threat Intel</h5>
+                    <p class="card-text text-secondary small">Reputasi IP/domain/URL/hash dari 15 sumber (VT, AbuseIPDB, GreyNoise, Shodan, …)</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('cve') }}" class="text-decoration-none">
+            <div class="card card-hover border-warning h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-bug-fill text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">CVE · EPSS · KEV</h5>
+                    <p class="card-text text-secondary small">CVE per produk/CPE dengan skor eksploitasi dan katalog CISA KEV</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('typosquat_page') }}" class="text-decoration-none">
+            <div class="card card-hover border-warning h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-type text-warning" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Typosquatting</h5>
+                    <p class="card-text text-secondary small">Domain tiruan terdaftar + deteksi homograph IDN</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('cloud') }}" class="text-decoration-none">
+            <div class="card card-hover border-info h-100">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-cloud-haze2-fill text-info" style="font-size: 2.5rem;"></i>
+                    <h5 class="card-title mt-2">Cloud &amp; GitHub Leak</h5>
+                    <p class="card-text text-secondary small">Bucket S3/GCS/Azure publik + kebocoran kredensial di GitHub</p>
                 </div>
             </div>
         </a>
