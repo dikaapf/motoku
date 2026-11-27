@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Pencarian{% endblock %}
+{% block title %}{{ _('Pencarian') }}{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <h2><i class="bi bi-search text-success"></i> Pencarian Terpadu</h2>
+        <h2><i class="bi bi-search text-success"></i> {{ _('Pencarian Terpadu') }}</h2>
         <form class="hero-search mt-3" action="{{ url_for('unified_search') }}" method="GET" data-unified-search>
             <div class="input-group input-group-lg">
                 <input class="form-control" type="search" name="q" value="{{ routing.query }}" required autocomplete="off">
-                <button class="btn btn-success" type="submit"><i class="bi bi-search"></i> Cari</button>
+                <button class="btn btn-success" type="submit"><i class="bi bi-search"></i> {{ _('Cari') }}</button>
             </div>
             <div class="detected-type text-secondary mt-1 ps-1"></div>
         </form>
@@ -16,9 +16,9 @@
 
 {% if routing.type %}
 <p class="mb-3">
-    Input <code>{{ routing.value }}</code> terdeteksi sebagai
-    <span class="badge bg-success fs-6">{{ routing.type_label }}</span>.
-    Pilih modul untuk dijalankan:
+    {{ _('Input') }} <code>{{ routing.value }}</code> {{ _('terdeteksi sebagai') }}
+    <span class="badge bg-success fs-6">{{ _(routing.type_label) }}</span>.
+    {{ _('Pilih modul untuk dijalankan:') }}
 </p>
 <div class="row g-3">
     {% for tool in routing.tools %}
@@ -28,10 +28,10 @@
                 <div class="card-body">
                     <h5 class="card-title mb-1">
                         {% if loop.first %}<i class="bi bi-star-fill text-success"></i>{% else %}<i class="bi bi-arrow-right-circle text-secondary"></i>{% endif %}
-                        {{ tool.label }}
+                        {{ _(tool.label) }}
                     </h5>
-                    <small class="text-secondary">Input: <code>{{ tool.value }}</code></small>
-                    {% if loop.first %}<span class="badge bg-success float-end">Utama</span>{% endif %}
+                    <small class="text-secondary">{{ _('Input') }}: <code>{{ tool.value }}</code></small>
+                    {% if loop.first %}<span class="badge bg-success float-end">{{ _('Utama') }}</span>{% endif %}
                 </div>
             </div>
         </a>
@@ -41,9 +41,9 @@
 {% else %}
 <div class="alert alert-warning">
     <i class="bi bi-question-circle"></i>
-    Tipe input <code>{{ routing.query }}</code> tidak dikenali. Contoh input yang didukung:
+    {{ _('Tipe input') }} <code>{{ routing.query }}</code> {{ _('tidak dikenali. Contoh input yang didukung:') }}
     <code>user@domain.com</code>, <code>example.com</code>, <code>https://example.com</code>,
-    <code>8.8.8.8</code>, <code>+6281234567890</code>, <code>john_doe</code>, atau nama lengkap.
+    <code>8.8.8.8</code>, <code>+6281234567890</code>, <code>john_doe</code>, {{ _('atau nama lengkap.') }}
 </div>
 {% endif %}
 {% endblock %}

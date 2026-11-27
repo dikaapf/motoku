@@ -378,9 +378,11 @@ def start_scheduler(interval=60):
         return _thread
 
     def loop():
+        from services import jobs
         while True:
             try:
                 if acquire_lease(ttl=interval * 2):
+                    jobs.recover_stale()
                     run_due()
             except Exception:
                 pass

@@ -226,3 +226,59 @@ code {
 .sev-high { border-left: 4px solid #dc3545 !important; }
 .sev-medium { border-left: 4px solid #ffc107 !important; }
 .sev-low { border-left: 4px solid #0dcaf0 !important; }
+
+/* ── S6: tools mega-menu, palette, polish ── */
+.tools-menu {
+    min-width: min(92vw, 760px);
+}
+
+.tools-menu .dropdown-item {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+}
+
+#palette-list .list-group-item.active {
+    background-color: rgba(0, 255, 136, 0.12) !important;
+    border-color: transparent;
+    color: #e8ffe8;
+}
+
+kbd {
+    background-color: #1a2a1a;
+    color: #cfe;
+    border: 1px solid #2a3a2a;
+    font-size: 0.75em;
+}
+
+.navbar .nav-link.active {
+    color: #00ff88 !important;
+}
+
+.home-section-title {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6c8a6c;
+}
+
+.tool-card .card-body {
+    padding: 1rem;
+}
+
+.tool-card i.tool-icon {
+    font-size: 1.6rem;
+}
+
+:focus-visible {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card-hover {
+        transition: none;
+    }
+    .card-hover:hover {
+        transform: none;
+    }
+}

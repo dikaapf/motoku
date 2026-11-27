@@ -27,9 +27,10 @@ function initUnifiedSearch() {
                 fetch('/api/detect?q=' + encodeURIComponent(q))
                     .then(r => r.json())
                     .then(d => {
+                        const t = window.MOTOKU ? window.MOTOKU.i18n : {};
                         hint.textContent = d.type
-                            ? 'Terdeteksi: ' + d.type_label + ' → ' + d.tools.map(t => t.label).join(', ')
-                            : 'Tipe input tidak dikenali';
+                            ? (t.detected || 'Terdeteksi') + ': ' + d.type_label + ' → ' + d.tools.map(x => x.label).join(', ')
+                            : (t.unknownType || 'Tipe input tidak dikenali');
                     })
                     .catch(() => { hint.textContent = ''; });
             }, 250);
@@ -55,13 +56,17 @@ function initPrefillFromQuery() {
         const button = form.querySelector('button[type="submit"]');
         if (button) {
             button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Memproses...';
+            button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + ((window.MOTOKU && MOTOKU.i18n.processing) || 'Memproses...');
         }
         form.submit();
     }
 }
 
 /* ── Copy & export ── */
+function i18n(key, fallback) {
+    return (window.MOTOKU && window.MOTOKU.i18n && window.MOTOKU.i18n[key]) || fallback;
+}
+
 function readResultData(id) {
     const el = document.getElementById(id || 'result-data');
     if (!el) return null;
@@ -163,7 +168,7 @@ function initCopyAndExport() {
         if (copyBtn) {
             copyText(copyBtn.dataset.copy).then(() => {
                 copyBtn.classList.add('copied');
-                flash('Disalin ke clipboard');
+                flash(i18n('copied', 'Disalin ke clipboard'));
                 setTimeout(() => copyBtn.classList.remove('copied'), 1200);
             });
             return;
@@ -172,13 +177,13 @@ function initCopyAndExport() {
         const exportBtn = event.target.closest('[data-export]');
         if (!exportBtn) return;
         const data = readResultData(exportBtn.dataset.source);
-        if (data === null) { flash('Tidak ada data untuk diekspor'); return; }
+        if (data === null) { flash(i18n('noData', 'Tidak ada data untuk diekspor')); return; }
         const base = (exportBtn.dataset.filename || 'motoku') + '-' + stamp();
         const json = JSON.stringify(data, null, 2);
 
         switch (exportBtn.dataset.export) {
             case 'copy':
-                copyText(json).then(() => flash('JSON disalin ke clipboard'));
+                copyText(json).then(() => flash(i18n('jsonCopied', 'JSON disalin ke clipboard')));
                 break;
             case 'json':
                 download(json, base + '.json', 'application/json');
@@ -299,6 +304,118 @@ document.addEventListener('DOMContentLoaded', function () {
             status.appendChild(link);
         } catch (e) {
             status.textContent = 'Gagal: ' + e.message;
+        }
+    });
+});
+
+
+/* ── Command palette (Ctrl/Cmd+K) and "/" to focus search ── */
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('palette-modal');
+    if (!modalEl || !window.bootstrap || !window.MOTOKU) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const input = document.getElementById('palette-input');
+    const list = document.getElementById('palette-list');
+    const T = window.MOTOKU.i18n;
+    let cases = null, items = [], selected = 0;
+
+    function score(text, query) {
+        // Subsequence fuzzy match: lower is better; -1 = no match.
+        text = text.toLowerCase();
+        if (!query) return 0;
+        const idx = text.indexOf(query);
+        if (idx >= 0) return idx;
+        let t = 0, gaps = 0;
+        for (const ch of query) {
+            const found = text.indexOf(ch, t);
+            if (found < 0) return -1;
+            gaps += found - t;
+            t = found + 1;
+        }
+        return 100 + gaps;
+    }
+
+    function build(query) {
+        const q = query.trim().toLowerCase();
+        const out = [];
+        if (q) out.push({label: T.searchFor.replace('{q}', query.trim()), icon: 'bi-search', color: 'success',
+                         category: T.actions, url: '/search?q=' + encodeURIComponent(query.trim()), s: -1});
+        window.MOTOKU.palette.forEach(t => {
+            const s = score(t.label + ' ' + t.keywords + ' ' + t.category, q);
+            if (s >= 0) out.push({...t, s});
+        });
+        (cases || []).forEach(c => {
+            const s = score(c.title + ' ' + c.id, q);
+            if (s >= 0) out.push({label: c.title, desc: c.id, icon: 'bi-folder2-open', color: 'success',
+                                  category: T.cases, url: '/cases/' + c.id, s: s + 0.5});
+        });
+        if (!q || score(T.newCase, q) >= 0) out.push({label: T.newCase, icon: 'bi-folder-plus', color: 'success',
+                                                       category: T.actions, url: '/cases', s: 50});
+        return out.sort((a, b) => a.s - b.s).slice(0, 40);
+    }
+
+    function render() {
+        items = build(input.value);
+        selected = Math.min(selected, Math.max(0, items.length - 1));
+        list.innerHTML = '';
+        if (!items.length) {
+            list.innerHTML = '<div class="text-secondary p-3">' + T.noMatch + '</div>';
+            return;
+        }
+        items.forEach((it, i) => {
+            const a = document.createElement('a');
+            a.href = it.url;
+            a.className = 'list-group-item list-group-item-action bg-transparent d-flex gap-2 align-items-center' + (i === selected ? ' active' : '');
+            a.setAttribute('role', 'option');
+            a.setAttribute('aria-selected', i === selected ? 'true' : 'false');
+            const icon = document.createElement('i');
+            icon.className = 'bi ' + it.icon + ' text-' + it.color + ' fs-5';
+            const body = document.createElement('div');
+            body.className = 'flex-grow-1 text-truncate';
+            const title = document.createElement('div');
+            title.textContent = it.label;
+            body.appendChild(title);
+            if (it.desc) {
+                const d = document.createElement('small');
+                d.className = 'text-secondary';
+                d.textContent = it.desc;
+                body.appendChild(d);
+            }
+            const cat = document.createElement('small');
+            cat.className = 'badge bg-dark border border-secondary';
+            cat.textContent = it.category;
+            a.append(icon, body, cat);
+            list.appendChild(a);
+        });
+        const active = list.querySelector('.active');
+        if (active) active.scrollIntoView({block: 'nearest'});
+    }
+
+    function open() {
+        input.value = '';
+        selected = 0;
+        render();
+        modal.show();
+        if (cases === null) {
+            cases = [];
+            fetch('/cases.json').then(r => r.ok ? r.json() : []).then(c => { cases = c; render(); }).catch(() => {});
+        }
+    }
+
+    modalEl.addEventListener('shown.bs.modal', () => input.focus());
+    input.addEventListener('input', () => { selected = 0; render(); });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { selected = Math.min(selected + 1, items.length - 1); render(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { selected = Math.max(selected - 1, 0); render(); e.preventDefault(); }
+        else if (e.key === 'Enter' && items[selected]) { window.location.href = items[selected].url; e.preventDefault(); }
+    });
+    document.querySelectorAll('[data-palette-open]').forEach(el => el.addEventListener('click', e => { e.preventDefault(); open(); }));
+    document.addEventListener('keydown', e => {
+        const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); open(); }
+        else if (e.key === '/' && !typing) {
+            const search = document.getElementById('nav-search-input');
+            if (search) { e.preventDefault(); search.focus(); }
         }
     });
 });

@@ -12,7 +12,7 @@
             <span class="badge bg-{{ 'success' if custody.valid else 'danger' }}" title="Chain of custody"><i class="bi bi-link-45deg"></i> custody {{ 'valid' if custody.valid else 'RUSAK' }} ({{ custody.count }})</span></div>
     </div>
     <div class="btn-group btn-group-sm flex-wrap">
-        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='html', view=1) }}" target="_blank"><i class="bi bi-eye"></i> Lihat laporan</a>
+        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='html', view=1) }}" target="_blank"><i class="bi bi-eye"></i> {{ _('Lihat laporan') }}</a>
         <a class="btn btn-outline-light {% if not pdf_available %}disabled{% endif %}" href="{{ url_for('cases.export', case_id=case.id, fmt='pdf') }}"><i class="bi bi-filetype-pdf"></i> PDF</a>
         <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='md') }}"><i class="bi bi-markdown"></i> MD</a>
         <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='json') }}"><i class="bi bi-filetype-json"></i> JSON</a>
@@ -22,7 +22,7 @@
 {% with messages = get_flashed_messages() %}{% for m in messages %}<div class="alert alert-warning py-1 small">{{ m }}</div>{% endfor %}{% endwith %}
 
 <ul class="nav nav-tabs mb-3" role="tablist">
-    {% for key, label, n in [('overview', 'Ringkasan', None), ('graph', 'Graf', entities|length), ('timeline', 'Timeline', events|length), ('entities', 'Entity', entities|length), ('findings', 'Temuan', findings|selectattr('status', 'in', ['open', 'confirmed'])|list|length), ('notes', 'Catatan', notes|length), ('attachments', 'Lampiran', attachments|length), ('watch', 'Watchlist', watches|length), ('settings', 'Pengaturan', None)] %}
+    {% for key, label, n in [('overview', _('Ringkasan'), None), ('graph', _('Graf'), entities|length), ('timeline', _('Timeline'), events|length), ('entities', _('Entity'), entities|length), ('findings', _('Temuan'), findings|selectattr('status', 'in', ['open', 'confirmed'])|list|length), ('notes', _('Catatan'), notes|length), ('attachments', _('Lampiran'), attachments|length), ('watch', _('Watchlist'), watches|length), ('settings', _('Pengaturan'), None)] %}
     <li class="nav-item" role="presentation"><button class="nav-link {% if tab == key %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#tab-{{ key }}" type="button" role="tab" data-tab="{{ key }}">{{ label }}{% if n is not none %} <span class="badge bg-secondary">{{ n }}</span>{% endif %}</button></li>
     {% endfor %}
 </ul>
@@ -32,20 +32,20 @@
     <div class="row g-3">
         <div class="col-lg-7">
             {% if case.description %}<div class="card border-secondary mb-3"><div class="card-body small" style="white-space: pre-wrap">{{ case.description }}</div></div>{% endif %}
-            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-exclamation-diamond"></i> Temuan terbuka teratas</div>
+            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-exclamation-diamond"></i> {{ _('Temuan terbuka teratas') }}</div>
                 <ul class="list-group list-group-flush">
                 {% for f in findings if f.status in ('open', 'confirmed') %}{% if loop.index <= 10 %}
                     <li class="list-group-item bg-transparent sev-{{ f.severity }}">{{ risk_badge(f.severity) }} {{ f.title }}<br><small class="text-secondary">{{ (f.detail or '')[:160] }}</small></li>
-                {% endif %}{% else %}<li class="list-group-item bg-transparent text-secondary">Belum ada temuan.</li>{% endfor %}
+                {% endif %}{% else %}<li class="list-group-item bg-transparent text-secondary">{{ _('Belum ada temuan.') }}</li>{% endfor %}
                 </ul></div>
             {% if alerts %}<div class="card border-warning"><div class="card-header"><i class="bi bi-bell"></i> Alert watchlist</div>
                 <ul class="list-group list-group-flush">{% for a in alerts[:8] %}<li class="list-group-item bg-transparent small">{{ risk_badge(a.severity) }} {{ a.title }} <span class="text-secondary">{{ a.ts }}</span></li>{% endfor %}</ul></div>{% endif %}
         </div>
         <div class="col-lg-5">
-            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-pie-chart"></i> Entity per tipe</div><div class="card-body">
+            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-pie-chart"></i> {{ _('Entity per tipe') }}</div><div class="card-body">
                 {% for t, n in counts.items() %}<span class="badge bg-dark border border-secondary me-1 mb-1">{{ t }} · {{ n }}</span>{% else %}<span class="text-secondary small">Kosong</span>{% endfor %}
             </div></div>
-            <div class="card border-info mb-3"><div class="card-header"><i class="bi bi-cloud-download"></i> Isi otomatis dari job</div><div class="card-body">
+            <div class="card border-info mb-3"><div class="card-header"><i class="bi bi-cloud-download"></i> {{ _('Isi otomatis dari job') }}</div><div class="card-body">
                 <form method="POST" action="{{ url_for('cases.import_result', case_id=case.id) }}" class="d-flex gap-2">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <select name="job_id" class="form-select form-select-sm" required>

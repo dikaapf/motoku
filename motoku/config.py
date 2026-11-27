@@ -39,6 +39,12 @@ class Config:
     # Watchlist scheduler thread (one process wins a DB lease).
     SCHEDULER_ENABLED = _env_bool('MOTOKU_SCHEDULER', True)
 
+    # Performance & observability
+    CACHE_WARMUP = _env_bool('MOTOKU_CACHE_WARMUP', True)
+    SEND_FILE_MAX_AGE_DEFAULT = int(os.environ.get('MOTOKU_STATIC_MAX_AGE', '86400'))
+    # /metrics bypasses Basic auth when a metrics token is configured.
+    METRICS_PUBLIC = bool(os.environ.get('MOTOKU_METRICS_TOKEN', '').strip())
+
     # Global per-client rate limiting.
     RATE_LIMIT_ENABLED = _env_bool('MOTOKU_RATE_LIMIT_ENABLED', True)
     RATE_LIMIT_REQUESTS = int(os.environ.get('MOTOKU_RATE_LIMIT_REQUESTS', '120'))

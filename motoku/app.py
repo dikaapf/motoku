@@ -65,6 +65,13 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db.configure(app.config['DB_PATH'])
 
+from services import catalog as tool_catalog  # noqa: E402
+from services import i18n, observability  # noqa: E402
+
+observability.init_app(app)
+i18n.init_app(app)
+app.jinja_env.globals.update(tool_catalog=tool_catalog)
+
 from routes import api as api_routes  # noqa: E402
 from routes import cases as case_routes  # noqa: E402
 from routes import settings as settings_routes  # noqa: E402
@@ -116,7 +123,7 @@ def _check_basic_auth():
 def enforce_rate_limit():
     if not app.config.get('RATE_LIMIT_ENABLED', True):
         return None
-    if request.path.startswith('/static/'):
+    if request.path.startswith('/static/') or request.path in ('/healthz', '/readyz', '/metrics'):
         return None
 
     client = request.remote_addr or 'unknown'
@@ -140,6 +147,8 @@ def require_auth():
         return None
     if request.path.startswith('/api/v1'):
         return None  # REST API authenticates with its own bearer tokens
+    if request.path in ('/healthz', '/readyz') or (request.path == '/metrics' and app.config.get('METRICS_PUBLIC')):
+        return None  # probes; /metrics stays behind auth unless MOTOKU_METRICS_TOKEN is used
     return _check_basic_auth()
 
 
@@ -154,6 +163,8 @@ def start_background_scheduler():
     _scheduler_started = True
     from services import watch
     watch.start_scheduler()
+    if app.config.get('CACHE_WARMUP', True):
+        observability.warm_up()
     return None
 
 
@@ -187,6 +198,22 @@ def set_security_headers(response):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/welcome')
+def welcome():
+    from services import setup_check
+    checks = setup_check.checks()
+    return render_template('welcome.html', checks=checks, done=sum(1 for c in checks if c['ok']))
+
+
+@app.context_processor
+def inject_setup_warnings():
+    from services import setup_check
+    try:
+        return {'setup_warnings': setup_check.banner_warnings()}
+    except Exception:
+        return {'setup_warnings': []}
 
 
 # ── UNIFIED SEARCH ──

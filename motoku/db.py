@@ -196,6 +196,19 @@ CREATE TABLE IF NOT EXISTS leases (
     expires REAL NOT NULL
 );
 
+-- ── S6: indexes for hot queries ──
+CREATE INDEX IF NOT EXISTS idx_findings_case_status ON findings(case_id, status, severity);
+CREATE INDEX IF NOT EXISTS idx_relations_case ON relations(case_id);
+CREATE INDEX IF NOT EXISTS idx_notes_case ON notes(case_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_case ON attachments(case_id);
+CREATE INDEX IF NOT EXISTS idx_cases_status_updated ON cases(status, updated_at);
+CREATE INDEX IF NOT EXISTS idx_watch_due ON watchlist(enabled, next_run);
+CREATE INDEX IF NOT EXISTS idx_watch_case ON watchlist(case_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_case ON alerts(case_id, acknowledged);
+CREATE INDEX IF NOT EXISTS idx_alerts_watch ON alerts(watch_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at);
+
 CREATE TABLE IF NOT EXISTS provider_daily (
     provider TEXT NOT NULL,
     day TEXT NOT NULL,
@@ -226,6 +239,7 @@ _init_lock = threading.Lock()
 def configure(path=None, migrate=True):
     """Point the module at a database file and initialise the schema."""
     global _db_path
+    close_connections()
     _db_path = path or os.environ.get('MOTOKU_DB_PATH') or DEFAULT_DB_PATH
     parent = os.path.dirname(os.path.abspath(_db_path))
     os.makedirs(parent, exist_ok=True)
@@ -240,12 +254,46 @@ def get_db_path():
     return _db_path or os.environ.get('MOTOKU_DB_PATH') or DEFAULT_DB_PATH
 
 
-def get_connection():
-    conn = sqlite3.connect(get_db_path(), timeout=15)
+_local = threading.local()
+
+
+def _open(path):
+    conn = sqlite3.connect(path, timeout=15, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA synchronous=NORMAL')    # safe with WAL, far fewer fsyncs
+    conn.execute('PRAGMA busy_timeout=15000')
+    conn.execute('PRAGMA cache_size=-16000')     # ~16 MB page cache per connection
+    conn.execute('PRAGMA temp_store=MEMORY')
     return conn
+
+
+def get_connection():
+    """Return this thread's pooled connection for the configured database.
+
+    SQLite connections are cheap but not free (WAL pragma + schema parsing on
+    every open). Each thread keeps one connection per database path and reuses
+    it; :func:`close_connections` drops them (used when the path changes).
+    """
+    path = get_db_path()
+    pool = getattr(_local, 'pool', None)
+    if pool is None:
+        pool = _local.pool = {}
+    conn = pool.get(path)
+    if conn is None:
+        conn = pool[path] = _open(path)
+    return conn
+
+
+def close_connections():
+    pool = getattr(_local, 'pool', None) or {}
+    for conn in pool.values():
+        try:
+            conn.close()
+        except sqlite3.Error:
+            pass
+    pool.clear()
 
 
 @contextmanager
@@ -254,8 +302,9 @@ def connection():
     try:
         yield conn
         conn.commit()
-    finally:
-        conn.close()
+    except BaseException:
+        conn.rollback()
+        raise
 
 
 def _init_schema():

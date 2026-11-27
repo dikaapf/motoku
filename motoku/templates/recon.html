@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Recon Domain{% endblock %}
+{% block title %}{{ _('Recon Domain') }}{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <h2><i class="bi bi-radar text-success"></i> Recon Domain Lengkap</h2>
+        <h2><i class="bi bi-radar text-success"></i> {{ _('Recon Domain Lengkap') }}</h2>
         <p class="text-secondary">Satu input domain → RDAP, DNS security, subdomain multi-source, takeover, HTTP probe, screenshot, TLS + CT, port scan, Wayback/urlscan/favicon, threat intel, CVE (EPSS/KEV), typosquatting, dan bucket cloud. Berjalan di background job.</p>
     </div>
 </div>
@@ -28,20 +28,20 @@
                     <label class="form-check-label" for="opt-typo">Typosquatting (600 variasi)</label></div>
                 <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="cloud" value="1" id="opt-cloud" checked>
                     <label class="form-check-label" for="opt-cloud">Bucket cloud (S3/GCS/Azure)</label></div>
-                <label class="form-label small" for="case_id">Simpan otomatis ke case</label>
+                <label class="form-label small" for="case_id">{{ _('Simpan otomatis ke case') }}</label>
                 <select class="form-select form-select-sm mb-3" id="case_id" name="case_id">
-                    <option value="">— jangan simpan —</option>
-                    <option value="__new__">+ Case baru (judul = domain)</option>
+                    <option value="">{{ _('— jangan simpan —') }}</option>
+                    <option value="__new__">{{ _('+ Case baru (judul = domain)') }}</option>
                     {% for c in cases %}<option value="{{ c.id }}" {% if c.id == selected_case %}selected{% endif %}>{{ c.title }} ({{ c.id }})</option>{% endfor %}
                 </select>
-                <button type="submit" class="btn btn-success w-100"><i class="bi bi-play-fill"></i> Mulai Recon</button>
+                <button type="submit" class="btn btn-success w-100"><i class="bi bi-play-fill"></i> {{ _('Mulai Recon') }}</button>
                 <small class="text-secondary d-block mt-2">Estimasi 2–6 menit tergantung jumlah subdomain. Gunakan hanya pada aset yang Anda miliki atau berizin.</small>
             </form>
         </div></div>
     </div>
     <div class="col-lg-7">
         <div class="card border-secondary">
-            <div class="card-header"><i class="bi bi-clock-history"></i> Recon terakhir</div>
+            <div class="card-header"><i class="bi bi-clock-history"></i> {{ _('Recon terakhir') }}</div>
             {% if recent %}
             <div class="list-group list-group-flush">
                 {% for j in recent %}
@@ -51,7 +51,7 @@
                 </a>
                 {% endfor %}
             </div>
-            {% else %}<div class="card-body text-secondary">Belum ada recon.</div>{% endif %}
+            {% else %}<div class="card-body text-secondary">{{ _('Belum ada recon.') }}</div>{% endif %}
         </div>
     </div>
 </div>

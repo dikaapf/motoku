@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Onboarding') }}{% endblock %}
+{% block content %}
+<h2><i class="bi bi-rocket-takeoff text-success"></i> {{ _('Selamat datang di Motoku') }}</h2>
+<p class="text-secondary">{{ _('Checklist setup dan panduan cepat untuk mulai investigasi.') }}</p>
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card border-secondary h-100"><div class="card-header"><i class="bi bi-list-check"></i> {{ _('Checklist') }}
+            <span class="badge bg-{{ 'success' if done == checks|length else 'warning text-dark' }} float-end">{{ done }}/{{ checks|length }}</span></div>
+        <ul class="list-group list-group-flush">
+            {% for c in checks %}
+            <li class="list-group-item bg-transparent">
+                {% if c.ok %}<i class="bi bi-check-circle-fill text-success"></i>
+                {% elif c.level == 'danger' %}<i class="bi bi-x-circle-fill text-danger"></i>
+                {% else %}<i class="bi bi-circle text-secondary"></i>{% endif %}
+                <strong>{{ c.title }}</strong>
+                {% if not c.ok %}<div class="small text-secondary ms-4">{{ c.detail }}{% if c.link %} <a class="text-info" href="{{ url_for(c.link) }}">→</a>{% endif %}</div>{% endif %}
+            </li>
+            {% endfor %}
+        </ul></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-success mb-3"><div class="card-header"><i class="bi bi-signpost-2"></i> {{ _('Mulai dalam 4 langkah') }}</div>
+        <div class="card-body small">
+            <ol class="mb-0">
+                <li class="mb-2">{{ _('Ketik target apa pun di kotak pencarian (email, domain, IP, username, nomor, koordinat, hash, CVE). Motoku mendeteksi tipenya dan menyarankan modul.') }}</li>
+                <li class="mb-2">{{ _('Untuk domain, jalankan') }} <a class="text-success" href="{{ url_for('recon') }}">{{ _('Recon lengkap') }}</a> {{ _('dan pilih "Case baru" agar hasilnya langsung tersimpan.') }}</li>
+                <li class="mb-2">{{ _('Di halaman case: telusuri graf, beri status pada temuan, tambah catatan dan lampiran bukti.') }}</li>
+                <li>{{ _('Ekspor laporan PDF/Markdown, lalu tambahkan target ke Watchlist untuk dipantau.') }}</li>
+            </ol>
+        </div></div>
+        <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-keyboard"></i> {{ _('Pintasan') }}</div>
+        <div class="card-body small">
+            <div><kbd>Ctrl</kbd>+<kbd>K</kbd> — {{ _('command palette: lompat ke tool, case, atau cari target') }}</div>
+            <div><kbd>/</kbd> — {{ _('fokus ke kotak pencarian') }}</div>
+            <div><i class="bi bi-folder-plus text-success"></i> {{ _('Case') }} — {{ _('tombol di setiap hasil untuk menyimpan ke case') }}</div>
+        </div></div>
+        <div class="card border-warning"><div class="card-header"><i class="bi bi-shield-exclamation"></i> {{ _('Etika & hukum') }}</div>
+        <div class="card-body small text-secondary">
+            {{ _('Gunakan hanya untuk tujuan yang sah: aset milik sendiri, penugasan yang berizin, riset, atau jurnalisme. Scan aktif (port scan, probe HTTP, bucket) hanya ke target yang Anda miliki atau berizin. Hormati privasi dan UU PDP.') }}
+        </div></div>
+    </div>
+</div>
+<p class="small text-secondary mt-3">{{ _('Dokumentasi lengkap ada di folder docs/ pada repositori.') }}</p>
+{% endblock %}

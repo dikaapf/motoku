@@ -160,6 +160,22 @@ def run_job(job_id):
                   result=result, partial={}, log=ctx._log, finished_at=db.now())
 
 
+def recover_stale(max_age_s=None):
+    """Mark jobs stuck in queued/running longer than the job timeout as failed.
+
+    Happens when a process dies mid-job (restart, crash, OOM). Returns the count.
+    """
+    from datetime import datetime, timedelta
+    max_age_s = max_age_s or int(os.environ.get('MOTOKU_JOB_TIMEOUT', '1800'))
+    cutoff = (datetime.now() - timedelta(seconds=max_age_s)).strftime('%Y-%m-%d %H:%M:%S')
+    with db.connection() as conn:
+        cur = conn.execute(
+            "UPDATE jobs SET status = 'failed', error = ?, message = 'Gagal', finished_at = ?"
+            " WHERE status IN ('queued', 'running') AND COALESCE(started_at, created_at) < ?",
+            ('Terhenti: proses worker berhenti atau melewati batas waktu', db.now(), cutoff))
+        return cur.rowcount
+
+
 def get(job_id):
     return db.get_job(job_id)
 

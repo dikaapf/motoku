@@ -15,7 +15,7 @@ Satuan: 1 PD ≈ 6–8 jam efektif. Solo full-time ≈ 4–5 bulan; 2 dev parale
 | **S3** ✅ | Threat intel & enrichment | 1.5 sprint | ~14.5 PD | S2 |
 | **S4** ✅ | People, image, geo | 1.5 sprint | ~12.5 PD | S1 |
 | **S5** ✅ | Case management & report | 2 sprint | ~19.5 PD | S2, S4 |
-| **S6** | Polish & scale (opsional) | 1 sprint | ~9 PD | S5 |
+| **S6** ✅ | Polish & scale (opsional) | 1 sprint | ~9 PD | S5 |
 | **Total** | | **~9.5 sprint** | **~95 PD** | |
 
 ---
@@ -150,6 +150,10 @@ Ekstensi browser (MV3) belum dipublikasikan ke store — dimuat sebagai unpacked
 | 6.3 | Performance tuning: DB index, cache warmup, conn pool | 2 |
 | 6.4 | Logging & monitoring (Sentry/Prometheus) | 1.5 |
 | 6.5 | Dokumentasi + onboarding | 1.5 |
+
+**Status S6 (2026-11-27): selesai.** i18n ringan berbasis katalog (UI utama EN; detail hasil tool tetap ID),
+command palette + katalog tool tunggal, pool koneksi SQLite + index + gzip + warm-up, logging/metrics/health/Sentry
+opsional, halaman `/welcome` + `docs/`. Test di `tests/test_s6.py`. **Seluruh roadmap S0–S6 selesai.**
 
 ---
 

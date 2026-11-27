@@ -294,3 +294,24 @@ Only scan assets you own or are authorised to test.
 - **Browser extension** (`extension/`): context menu (selection/link/image/page
   → Motoku), popup search, add current page to a case, reputation check. Load it
   unpacked from `chrome://extensions` and set server URL + token in Options.
+
+## S6 — Polish & scale
+
+- **i18n ID/EN**: language switch in the navbar (cookie, `?lang=`, or
+  `Accept-Language`); interface chrome, menus, home, search, cases, recon and
+  onboarding are translated via `translations/en.json`;
+  `scripts/i18n_check.py` (also enforced by tests) reports missing strings.
+  Tool result details remain in Indonesian.
+- **Command palette** (`Ctrl/Cmd+K`) with fuzzy search over tools, cases and a
+  "search this target" action; `/` focuses the search box. Navbar mega-menu,
+  home page and palette are all generated from `services/catalog.py`.
+- **Performance**: per-thread pooled SQLite connections with WAL /
+  `synchronous=NORMAL`, indexes for hot queries (small queries ~50× faster),
+  gzip for text/JSON responses (home 41 KB → 7.5 KB), static caching, cache
+  warm-up, automatic recovery of stuck jobs.
+- **Observability**: request logging (text or JSON, `X-Request-ID`),
+  `/healthz`, `/readyz`, Prometheus `/metrics` (HTTP counters/latency + DB
+  gauges), optional Sentry, Docker `HEALTHCHECK`.
+- **Docs & onboarding**: `/welcome` checklist (security, providers, binaries,
+  first case/token) with a warning banner for critical misconfiguration, and
+  full documentation in [`docs/`](../docs/README.md).
