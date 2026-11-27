@@ -1,62 +1,141 @@
 {% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, copy_btn, job_progress %}
 {% block title %}Username Tracker{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <h2><i class="bi bi-person-badge-fill text-warning"></i> Username Tracker</h2>
-        <p class="text-secondary">Cari username di 22 platform sosial media.</p>
+        <p class="text-secondary mb-0">
+            Cek username di {{ dataset.total_sites }} situs memakai dataset
+            <a href="https://github.com/WebBreacher/WhatsMyName" target="_blank" rel="noopener" class="text-warning">WhatsMyName</a>
+            (deteksi berbasis status code + penanda halaman, dicek paralel).
+        </p>
+        <small class="text-secondary">Dataset diperbarui: {{ dataset.updated or 'belum ada' }}</small>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-md-5">
+    <div class="col-lg-4 mb-3">
         <div class="card border-warning">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                            <span class="input-group-text"><i class="bi bi-at"></i></span>
                             <input type="text" class="form-control form-control-lg" id="username" name="username"
                                    placeholder="john_doe" required
-                                   value="{{ request.form.get('username', '') }}">
+                                   value="{{ request.form.get('username', username_value) }}">
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="categories" class="form-label">Kategori <small class="text-secondary">(kosong = semua)</small></label>
+                        <select class="form-select" id="categories" name="categories" multiple size="7">
+                            {% for cat in dataset.categories if cat != nsfw_category %}
+                            <option value="{{ cat }}" {% if cat in selected %}selected{% endif %}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-secondary">Ctrl/Cmd + klik untuk memilih lebih dari satu. Memilih kategori mempercepat scan.</small>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1" id="nsfw" name="nsfw" {% if include_nsfw %}checked{% endif %}>
+                        <label class="form-check-label" for="nsfw">Sertakan situs dewasa (NSFW)</label>
                     </div>
                     <button type="submit" class="btn btn-warning w-100">
                         <i class="bi bi-search"></i> Cari Username
                     </button>
+                    <small class="text-secondary d-block mt-2">Scan berjalan di background (~1 menit untuk semua situs).</small>
                 </form>
+                <hr>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="wmn-update">
+                    <i class="bi bi-arrow-repeat"></i> Update dataset WhatsMyName
+                </button>
+                <small class="d-block mt-1 text-secondary" id="wmn-update-status"></small>
             </div>
         </div>
     </div>
 
-    <div class="col-md-7">
+    <div class="col-lg-8">
         {% if error %}
         <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
         {% endif %}
-        {% if results is not none %}
-        <div class="card border-warning">
-            <div class="card-header bg-warning text-dark"><i class="bi bi-list-check"></i> Hasil Pencarian</div>
-            <div class="card-body p-0">
-                <div class="list-group list-group-flush">
-                    {% for item in results %}
-                    <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center
-                                {% if item.found %}list-group-item-success{% else %}list-group-item-dark{% endif %}">
-                        <div>
-                            <strong>{{ item.name }}</strong><br>
-                            <small class="text-secondary">{{ item.url }}</small>
-                        </div>
-                        {% if item.found %}
-                        <a href="{{ item.url }}" target="_blank" class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle"></i> Ditemukan</a>
-                        {% else %}
-                        <span class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-x-circle"></i> Tidak</span>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+        {{ job_progress(job) }}
+        {% if data %}
+        {{ result_data(data) }}
+        <div class="row g-2 mb-3 text-center">
+            <div class="col"><div class="card border-success"><div class="card-body py-2"><h4 class="mb-0 text-success">{{ data.counts.found }}</h4><small>Ditemukan</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0">{{ data.counts.not_found }}</h4><small>Tidak ada</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0 text-warning">{{ data.counts.unknown }}</h4><small>Tidak pasti</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0">{{ data.elapsed_s }}s</h4><small>{{ data.checked }} situs</small></div></div></div>
         </div>
+
+        {% call result_card('Hasil untuk @' ~ data.username, 'bi-list-check', 'warning', 'username-' ~ data.username, 'results') %}
+        <div class="btn-group btn-group-sm mb-3 wmn-filter" role="group" aria-label="Filter">
+            <input type="radio" class="btn-check" name="wmn-filter" id="f-found" value="found" checked>
+            <label class="btn btn-outline-success" for="f-found">Ditemukan</label>
+            <input type="radio" class="btn-check" name="wmn-filter" id="f-unknown" value="unknown">
+            <label class="btn btn-outline-warning" for="f-unknown">Tidak pasti</label>
+            <input type="radio" class="btn-check" name="wmn-filter" id="f-all" value="all">
+            <label class="btn btn-outline-secondary" for="f-all">Semua</label>
+        </div>
+        <div class="list-group list-group-flush" id="wmn-results">
+            {% for item in data.results %}
+            <div class="list-group-item wmn-row d-flex justify-content-between align-items-center
+                        {% if item.status == 'found' %}list-group-item-success{% else %}list-group-item-dark{% endif %}"
+                 data-status="{{ item.status }}" {% if item.status != 'found' %}hidden{% endif %}>
+                <div class="text-truncate me-2">
+                    <strong>{{ item.name }}</strong>
+                    <span class="badge bg-dark border border-secondary ms-1">{{ item.category }}</span><br>
+                    <small class="text-secondary">{{ item.url }}</small>{{ copy_btn(item.url) }}
+                </div>
+                {% if item.status == 'found' %}
+                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success text-nowrap"><i class="bi bi-box-arrow-up-right"></i> Buka</a>
+                {% elif item.status == 'unknown' %}
+                <span class="badge bg-warning text-dark" title="{{ item.error or ('HTTP ' ~ item.http_code) }}">{{ item.error or ('HTTP ' ~ item.http_code) }}</span>
+                {% else %}
+                <span class="badge bg-secondary">Tidak ada</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="text-secondary small mt-2 mb-0" id="wmn-empty" {% if data.counts.found %}hidden{% endif %}>Tidak ada hasil untuk filter ini.</p>
+        {% endcall %}
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('input[name="wmn-filter"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const value = radio.value;
+        let shown = 0;
+        document.querySelectorAll('#wmn-results .wmn-row').forEach(row => {
+            const visible = value === 'all' || row.dataset.status === value;
+            row.hidden = !visible;
+            if (visible) shown++;
+        });
+        document.getElementById('wmn-empty').hidden = shown > 0;
+    });
+});
+
+const updateBtn = document.getElementById('wmn-update');
+if (updateBtn) {
+    updateBtn.addEventListener('click', () => {
+        const status = document.getElementById('wmn-update-status');
+        updateBtn.disabled = true;
+        status.textContent = 'Mengunduh dataset...';
+        fetch('{{ url_for("username_update_dataset") }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
+        })
+            .then(r => r.json())
+            .then(d => { status.textContent = d.success ? 'Berhasil: ' + d.total + ' situs' : 'Gagal: ' + d.error; })
+            .catch(e => { status.textContent = 'Gagal: ' + e; })
+            .finally(() => { updateBtn.disabled = false; });
+    });
+}
+</script>
 {% endblock %}

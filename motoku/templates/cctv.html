@@ -143,7 +143,12 @@ function syncCCTV() {
     status.innerHTML = '<i class="bi bi-hourglass-split"></i> Menyinkronkan data dari cctvindonesia.id...';
     status.style.display = 'block';
 
-    fetch('{{ url_for("cctv_sync") }}')
+    fetch('{{ url_for("cctv_sync") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {

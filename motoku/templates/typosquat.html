@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, job_progress, risk_badge, copy_btn %}
+{% block title %}Typosquatting{% endblock %}
+{% macro homograph_card(h) %}
+<div class="card border-{{ 'danger' if h.suspicious else 'success' }} mb-3"><div class="card-body small">
+    <h6><i class="bi bi-fonts"></i> Analisa homograph: <code>{{ h.input }}</code></h6>
+    <div>Unicode: <strong>{{ h.unicode }}</strong> · Punycode: <code>{{ h.punycode }}</code> · IDN: {{ 'ya' if h.is_idn else 'tidak' }}</div>
+    <div>Bentuk ASCII mirip: <code>{{ h.skeleton }}</code></div>
+    {% for f in h.findings %}<div class="text-danger"><i class="bi bi-exclamation-triangle"></i> {{ f }}</div>{% else %}<div class="text-success"><i class="bi bi-check-circle"></i> Tidak ada indikasi homograph.</div>{% endfor %}
+</div></div>
+{% endmacro %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-type text-warning"></i> Typosquatting &amp; Homograph</h2>
+    <p class="text-secondary">Buat ratusan variasi domain (salah ketik, homoglyph, bitsquatting, TLD lain, kata tambahan) lalu cek mana yang sudah terdaftar, termasuk yang punya MX (bisa dipakai phishing email).</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-warning"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="domain" class="form-label">Domain brand</label>
+                <input type="text" class="form-control form-control-lg mb-3" id="domain" name="domain" required placeholder="tokopedia.com" value="{{ request.form.get('domain', domain) }}">
+                <button type="submit" name="mode" value="scan" class="btn btn-warning w-100 mb-2"><i class="bi bi-search"></i> Scan typosquat (background)</button>
+                <button type="submit" name="mode" value="homograph" class="btn btn-outline-warning w-100"><i class="bi bi-fonts"></i> Cek homograph saja</button>
+            </form>
+        </div></div>
+        {% if data %}
+        <div class="card border-secondary mt-3"><div class="card-body small">
+            <div>{{ data.generated }} variasi dibuat, {{ data.checked }} dicek.</div>
+            <div class="mt-1">{% for f, n in data.fuzzers.items() %}<span class="badge bg-secondary me-1 mb-1">{{ f }} {{ n }}</span>{% endfor %}</div>
+        </div></div>
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if homograph %}{{ homograph_card(homograph) }}{% endif %}
+        {{ job_progress(job) }}
+        {% if data %}
+        {{ result_data(data) }}
+        {{ homograph_card(data.homograph) }}
+        {% call result_card(data.registered_count ~ ' domain mirip sudah terdaftar', 'bi-exclamation-diamond', 'warning', 'typosquat-' ~ data.domain, 'registered') %}
+        <div class="table-responsive" style="max-height: 520px"><table class="table table-dark table-sm table-striped align-middle mb-0">
+            <thead><tr><th>Domain</th><th>Teknik</th><th>A</th><th>MX</th><th>Risiko</th></tr></thead>
+            <tbody>{% for r in data.registered %}
+            <tr>
+                <td><code>{{ r.domain }}</code>{% if r.domain != r.ascii %}<br><small class="text-secondary">{{ r.ascii }}</small>{% endif %}{{ copy_btn(r.ascii) }}</td>
+                <td><small>{{ r.fuzzer }}</small></td>
+                <td><small>{{ r.a|join(', ') or (r.ns[:1]|join(', ') ~ ' (NS)') }}{% if r.same_ip %} <span class="badge bg-success">IP sama</span>{% endif %}</small></td>
+                <td>{% if r.mx %}<span class="badge bg-warning text-dark" title="{{ r.mx|join(', ') }}">MX</span>{% endif %}</td>
+                <td>{{ risk_badge(r.risk) }}</td>
+            </tr>
+            {% else %}<tr><td colspan="5" class="text-success">Tidak ada variasi yang terdaftar.</td></tr>{% endfor %}</tbody>
+        </table></div>
+        {% if data.short_name %}<div class="alert alert-secondary small py-1 mt-2 mb-1">Nama brand sangat pendek: variasi 1 huruf kemungkinan besar domain sah milik pihak lain, sehingga hanya homoglyph yang dinilai berisiko.</div>{% endif %}
+        <small class="text-secondary">"IP sama" biasanya registrasi defensif milik brand sendiri. Risiko tinggi = nama sangat mirip + punya MX.</small>
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

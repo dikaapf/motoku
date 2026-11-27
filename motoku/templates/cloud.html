@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, job_progress %}
+{% block title %}Cloud &amp; Leak{% endblock %}
+{% block content %}
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-cloud-haze2-fill text-info"></i> Cloud Storage &amp; GitHub Leak</h2>
+    <p class="text-secondary">Cari bucket S3 / GCS / Azure Blob terkait organisasi dan cek apakah bisa di-list publik (hanya nama objek, tidak ada unduhan). Opsional: cari kebocoran kredensial terkait domain di GitHub (nilai rahasia disamarkan).</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-info"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="keyword" class="form-label">Domain atau nama organisasi</label>
+                <input type="text" class="form-control form-control-lg mb-3" id="keyword" name="keyword" required placeholder="example.com" value="{{ request.form.get('keyword', keyword) }}">
+                {% for key, label in [('s3', 'AWS S3'), ('gcs', 'Google Cloud Storage'), ('azure', 'Azure Blob')] %}
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="providers" value="{{ key }}" id="p-{{ key }}" checked><label class="form-check-label" for="p-{{ key }}">{{ label }}</label></div>
+                {% endfor %}
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="github" value="1" id="gh" {% if github_configured %}checked{% else %}disabled{% endif %}>
+                    <label class="form-check-label" for="gh">GitHub code search {% if not github_configured %}<small class="text-secondary">(set MOTOKU_GITHUB_TOKEN)</small>{% endif %}</label></div>
+                <button type="submit" class="btn btn-info w-100"><i class="bi bi-search"></i> Cari</button>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {{ job_progress(job) }}
+        {% if data %}
+        {{ result_data(data) }}
+        {% call result_card(data.buckets|length ~ ' bucket ditemukan (' ~ data.public ~ ' publik) dari ' ~ data.checked ~ ' pengecekan', 'bi-bucket', 'info', 'cloud-' ~ data.keyword, 'buckets') %}
+        <div class="list-group list-group-flush">
+        {% for b in data.buckets %}
+            <div class="list-group-item bg-transparent {% if b.status == 'public' %}sev-high{% endif %}">
+                <span class="badge bg-{{ 'danger' if b.status == 'public' else 'secondary' }}">{{ b.status }}</span>
+                <strong>{{ b.provider }}</strong> <code>{{ b.name }}</code>{% if b.region %} <small class="text-secondary">{{ b.region }}</small>{% endif %}
+                <a href="{{ b.url }}" target="_blank" rel="noopener noreferrer" class="text-info small ms-1"><i class="bi bi-box-arrow-up-right"></i></a>
+                {% if b.sample %}<div class="small text-secondary mt-1">Contoh objek: {{ b.sample|join(', ') }}</div>{% endif %}
+            </div>
+        {% else %}<p class="text-success mb-0">Tidak ada bucket dengan nama kandidat yang ditemukan.</p>{% endfor %}
+        </div>
+        <small class="text-secondary d-block mt-2">"private" = bucket ada tetapi menolak akses anonim (baik). "public" = siapa pun bisa melihat daftar isinya.
+            Nama bucket bersifat global — bucket yang cocok <strong>belum tentu milik organisasi ini</strong>; verifikasi kepemilikan dari isi/objeknya sebelum menindaklanjuti.</small>
+        {% endcall %}
+        {% set gh = data.github %}
+        {% if gh %}
+        {% call result_card('GitHub code search', 'bi-github', 'secondary', toolbar=False) %}
+        {% if gh.status != 'ok' %}<p class="text-secondary mb-0">{{ gh.message }}</p>
+        {% else %}
+        <p class="small">{{ gh.results|length }} file menyebut <code>{{ gh.domain }}</code>; {{ gh.with_secrets }} berisi pola rahasia.</p>
+        {% for e in gh.errors %}<div class="small text-warning">{{ e }}</div>{% endfor %}
+        <div class="list-group list-group-flush">{% for r in gh.results %}
+            <div class="list-group-item bg-transparent {% if r.findings %}sev-high{% endif %}">
+                <a class="text-info" href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.repo }}/{{ r.path }}</a>
+                {% for f in r.findings %}<span class="badge bg-danger ms-1">{{ f.type }}: {{ f.masked }}</span>{% endfor %}
+                {% for snip in r.snippets %}<pre class="job-log small mt-1 mb-0">{{ snip }}</pre>{% endfor %}
+            </div>{% endfor %}</div>
+        {% endif %}
+        {% endcall %}
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

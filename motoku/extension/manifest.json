@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Motoku OSINT",
+  "version": "1.0.0",
+  "description": "Kirim teks, tautan, gambar, atau halaman yang sedang dibuka ke instance Motoku OSINT Anda.",
+  "permissions": ["contextMenus", "storage", "activeTab"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Motoku OSINT" },
+  "options_page": "options.html"
+}

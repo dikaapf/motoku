@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="dark">
+<html lang="{{ current_lang() }}" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Motoku OSINT — {% block title %}Information Gathering Tool{% endblock %}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Motoku OSINT — {% block title %}{{ _('Information Gathering Tool') }}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.6/dist/dist/vis-network.min.css">
 </head>
 <body>
+    <a class="visually-hidden-focusable position-absolute top-0 start-0 m-2 btn btn-success btn-sm" href="#main">{{ _('Lewati ke konten') }}</a>
     <nav class="navbar navbar-expand-lg navbar-dark border-bottom border-success border-2">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
@@ -18,35 +20,45 @@
                 <span class="fw-bold">Motoku</span>
                 <span class="badge bg-success ms-2">OSINT</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="{{ _('Menu') }}">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <form class="d-flex nav-search ms-lg-4 my-2 my-lg-0 flex-grow-1" role="search"
+                      action="{{ url_for('unified_search') }}" method="GET">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-transparent border-secondary"><i class="bi bi-search"></i></span>
+                        <input class="form-control" type="search" name="q" id="nav-search-input" aria-label="{{ _('Cari') }}"
+                               placeholder="{{ _('Email, domain, IP, username, nomor…') }}"
+                               value="{{ request.args.get('q', '') if request.endpoint == 'unified_search' else '' }}">
+                        <button class="btn btn-outline-secondary" type="button" data-palette-open title="{{ _('Command palette') }} (Ctrl+K)"><kbd class="small">Ctrl K</kbd></button>
+                    </div>
+                </form>
                 <ul class="navbar-nav ms-auto">
+                    {% for endpoint, icon, label in [('cases.index', 'bi-folder2-open', _('Cases')), ('recon', 'bi-radar', _('Recon')), ('watch.index', 'bi-binoculars', _('Watch'))] %}
+                    <li class="nav-item"><a class="nav-link {% if request.endpoint == endpoint or (request.blueprint and endpoint.startswith(request.blueprint ~ '.')) %}active{% endif %}" href="{{ url_for(endpoint) }}"><i class="bi {{ icon }} text-success"></i> {{ label }}</a></li>
+                    {% endfor %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-grid-3x3-gap"></i> Tools
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-grid-3x3-gap"></i> {{ _('Tools') }}
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark">
-                            <li><a class="dropdown-item" href="{{ url_for('phone') }}"><i class="bi bi-telephone text-success"></i> Phone</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('ip_track') }}"><i class="bi bi-globe2 text-info"></i> IP</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('username') }}"><i class="bi bi-person-badge text-warning"></i> Username</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('email') }}"><i class="bi bi-envelope text-danger"></i> Email</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('domain') }}"><i class="bi bi-building text-primary"></i> Domain</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('dns') }}"><i class="bi bi-diagram-3 text-secondary"></i> DNS</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('subdomain') }}"><i class="bi bi-diagram-3-fill text-warning"></i> Subdomain</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('portscan') }}"><i class="bi bi-plug text-danger"></i> Port Scan</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('tech') }}"><i class="bi bi-cpu text-info"></i> Tech Stack</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('search_person') }}"><i class="bi bi-person-search text-info"></i> Search Person</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('dorks') }}"><i class="bi bi-shield-shaded text-success"></i> Google Dorks</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('location_tracker') }}"><i class="bi bi-geo-alt-fill text-danger"></i> Location Tracker</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('cctv') }}"><i class="bi bi-camera-video-fill text-info"></i> CCTV Finder</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('flight_radar') }}"><i class="bi bi-airplane-engines text-primary"></i> Flight Radar</a></li>
+                        <div class="dropdown-menu dropdown-menu-dark dropdown-menu-end tools-menu p-2">
+                            <div class="row g-2">
+                            {% for key, cat_label, items in tool_catalog.grouped() if key != 'workflow' %}
+                                <div class="col-md-6 col-lg-4">
+                                    <h6 class="dropdown-header px-2">{{ _(cat_label) }}</h6>
+                                    {% for t in items %}<a class="dropdown-item rounded {% if request.endpoint == t.endpoint %}active{% endif %}" href="{{ url_for(t.endpoint) }}"><i class="bi {{ t.icon }} text-{{ t.color }}"></i> {{ _(t.label) }}</a>{% endfor %}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="{{ _('Bahasa') }}">
+                            <i class="bi bi-translate"></i> {{ current_lang()|upper }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            {% for code, name in LANGS.items() %}<li><a class="dropdown-item {% if code == current_lang() %}active{% endif %}" href="{{ url_for('set_language', code=code) }}" lang="{{ code }}">{{ name }}</a></li>{% endfor %}
                         </ul>
                     </li>
                 </ul>
@@ -54,21 +66,78 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <main class="container mt-4" id="main">
+        {% if setup_warnings and request.endpoint not in ('welcome', 'static') %}
+        <div class="alert alert-warning py-2 small d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-exclamation-triangle"></i> {{ setup_warnings[0] }}{% if setup_warnings|length > 1 %} {{ _('(+{n} lainnya)', n=setup_warnings|length - 1) }}{% endif %}</span>
+            <a class="btn btn-sm btn-outline-warning" href="{{ url_for('welcome') }}">{{ _('Lihat checklist') }}</a>
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <footer class="footer mt-5 py-3 border-top border-secondary">
         <div class="container text-center text-muted">
             <small>
                 <i class="bi bi-radioactive text-success"></i> <strong>Motoku OSINT</strong> —
-                Phone · IP · Username · Email · Domain · DNS · Subdomain · Port Scan · Tech · Search Person · Dorks · Flight Radar
+                {{ _('{n} modul OSINT, case management, REST API', n=tool_catalog.count()) }} ·
+                <a class="text-secondary" href="{{ url_for('welcome') }}">{{ _('Panduan') }}</a> ·
+                <a class="text-secondary" href="{{ url_for('api_v1.docs') }}">API</a> ·
+                <a class="text-secondary" href="#" data-palette-open>Ctrl+K</a>
                 <br>
-                <span class="text-success">Gunakan dengan bijak dan bertanggung jawab</span>
+                <span class="text-success">{{ _('Gunakan dengan bijak dan bertanggung jawab') }}</span>
             </small>
         </div>
     </footer>
 
+    <div class="modal fade" id="save-case-modal" tabindex="-1" aria-labelledby="save-case-title" aria-hidden="true">
+        <div class="modal-dialog"><div class="modal-content bg-dark border-success">
+            <div class="modal-header"><h5 class="modal-title" id="save-case-title"><i class="bi bi-folder-plus text-success"></i> {{ _('Simpan ke case') }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ _('Tutup') }}"></button></div>
+            <div class="modal-body">
+                <label class="form-label small" for="save-case-select">{{ _('Case tujuan') }}</label>
+                <select class="form-select mb-2" id="save-case-select"></select>
+                <div id="save-case-new" hidden><input class="form-control mb-2" id="save-case-title-input" placeholder="{{ _('Judul case baru') }}"></div>
+                <small class="text-secondary">{{ _('Entity, relasi, dan temuan diekstrak otomatis dari hasil ini dan dicatat di chain of custody.') }}</small>
+                <div class="small mt-2" id="save-case-status"></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-success" id="save-case-submit">{{ _('Simpan') }}</button></div>
+        </div></div>
+    </div>
+
+    <div class="modal fade" id="palette-modal" tabindex="-1" aria-label="{{ _('Command palette') }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg" style="margin-top: 10vh"><div class="modal-content bg-dark border-success">
+            <div class="modal-header p-2">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-0"><i class="bi bi-command text-success"></i></span>
+                    <input type="text" class="form-control border-0 bg-transparent fs-5" id="palette-input" autocomplete="off"
+                           placeholder="{{ _('Ketik nama tool, case, atau target untuk dicari…') }}" aria-label="{{ _('Cari perintah') }}"
+                           role="combobox" aria-expanded="true" aria-controls="palette-list">
+                </div>
+            </div>
+            <div class="modal-body p-1"><div class="list-group list-group-flush" id="palette-list" role="listbox"></div></div>
+            <div class="modal-footer py-1 justify-content-between small text-secondary">
+                <span><kbd>↑</kbd> <kbd>↓</kbd> {{ _('pilih') }} · <kbd>Enter</kbd> {{ _('buka') }} · <kbd>Esc</kbd> {{ _('tutup') }}</span>
+                <span><kbd>/</kbd> {{ _('fokus pencarian') }} · <kbd>Ctrl</kbd>+<kbd>K</kbd> {{ _('palette') }}</span>
+            </div>
+        </div></div>
+    </div>
+
+    <script>
+        window.MOTOKU = {
+            lang: {{ current_lang()|tojson }},
+            tools: {{ tool_catalog.tools()|map(attribute='endpoint')|list|tojson }},
+            palette: [{% for t in tool_catalog.tools() %}{label: {{ _(t.label)|tojson }}, desc: {{ _(t.desc)|tojson }}, category: {{ _(t.category_label)|tojson }}, icon: {{ t.icon|tojson }}, color: {{ t.color|tojson }}, url: {{ url_for(t.endpoint)|tojson }}, keywords: {{ t.keywords|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}],
+            i18n: {
+                search: {{ _('Cari')|tojson }}, searchFor: {{ _('Cari "{q}" di semua modul')|tojson }},
+                newCase: {{ _('Buat case baru')|tojson }}, cases: {{ _('Case')|tojson }}, actions: {{ _('Aksi')|tojson }},
+                copied: {{ _('Disalin ke clipboard')|tojson }}, jsonCopied: {{ _('JSON disalin ke clipboard')|tojson }},
+                noData: {{ _('Tidak ada data untuk diekspor')|tojson }}, noMatch: {{ _('Tidak ada yang cocok')|tojson }},
+                detected: {{ _('Terdeteksi')|tojson }}, unknownType: {{ _('Tipe input tidak dikenali')|tojson }},
+                processing: {{ _('Memproses...')|tojson }}
+            }
+        };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block extra_js %}{% endblock %}

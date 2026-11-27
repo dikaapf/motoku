@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, copy_btn %}
+{% block title %}Geo Intel{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<div class="row mb-4"><div class="col-12">
+    <h2><i class="bi bi-globe-asia-australia text-success"></i> Geo Intel</h2>
+    <p class="text-secondary">Reverse geocode (OSM), POI sekitar (Overpass), titik api NASA FIRMS, tautan citra satelit &amp; street-level, dan posisi matahari untuk chronolocation (arah &amp; panjang bayangan).</p>
+</div></div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-success"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="location" class="form-label">Koordinat / tempat / URL Google Maps</label>
+                <input type="text" class="form-control form-control-lg mb-2" id="location" name="location" required
+                       placeholder="-6.1754, 106.8272" value="{{ request.form.get('location', '') }}">
+                <label for="when" class="form-label small">Waktu lokal (untuk posisi matahari)</label>
+                <input type="datetime-local" class="form-control mb-2" id="when" name="when" value="{{ request.form.get('when', '') }}">
+                <div class="row g-2 mb-3">
+                    <div class="col"><label for="tz" class="form-label small">UTC offset</label>
+                        <input type="number" step="0.5" class="form-control" id="tz" name="tz" placeholder="7" value="{{ request.form.get('tz', '') }}"></div>
+                    <div class="col"><label for="radius" class="form-label small">Radius POI (m)</label>
+                        <input type="number" class="form-control" id="radius" name="radius" value="{{ request.form.get('radius', '500') }}" min="50" max="3000"></div>
+                </div>
+                <button type="submit" class="btn btn-success w-100"><i class="bi bi-search"></i> Analisa</button>
+            </form>
+            <small class="text-secondary d-block mt-2">Format: desimal, DMS (<code>6°10'30"S 106°49'E</code>), atau URL Google Maps. WIB=7, WITA=8, WIT=9.</small>
+        </div></div>
+        {% if report %}
+        {% set s = report.sun %}
+        <div class="card border-warning mt-3"><div class="card-body small">
+            <h6><i class="bi bi-sun"></i> Matahari — {{ s.when }} (UTC{{ '%+g'|format(s.tz_offset) }})</h6>
+            <div>Azimut <strong>{{ s.azimuth }}°</strong> · elevasi <strong>{{ s.elevation }}°</strong></div>
+            {% if s.shadow_ratio %}<div>Bayangan mengarah <strong>{{ s.shadow_azimuth }}°</strong>, panjang <strong>{{ s.shadow_ratio }}×</strong> tinggi objek</div>
+            {% else %}<div class="text-secondary">Matahari di bawah horizon.</div>{% endif %}
+            <div class="text-secondary">Terbit {{ s.sunrise or '-' }} · tengah hari {{ s.solar_noon }} · terbenam {{ s.sunset or '-' }}</div>
+            <details class="mt-1"><summary class="text-secondary">Tabel per jam</summary>
+                <table class="table table-dark table-sm mb-0"><thead><tr><th>Jam</th><th>Azimut</th><th>Elevasi</th><th>Bayangan</th></tr></thead>
+                <tbody>{% for r in s.table %}<tr><td>{{ r.time }}</td><td>{{ r.azimuth }}°</td><td>{{ r.elevation }}°</td><td>{{ r.shadow_ratio ~ '× @' ~ r.shadow_azimuth ~ '°' if r.shadow_ratio else '-' }}</td></tr>{% endfor %}</tbody></table>
+            </details>
+        </div></div>
+        {% endif %}
+    </div>
+    <div class="col-lg-8">
+        {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+        {% if report %}
+        {{ result_data(report) }}
+        {% call result_card(report.lat ~ ', ' ~ report.lng, 'bi-geo-alt-fill', 'success', 'geo-' ~ report.lat ~ '_' ~ report.lng, 'pois') %}
+        {% if report.address %}<p class="mb-1">{{ report.address.display_name }}{{ copy_btn(report.address.display_name) }}</p>
+        {% elif report.address_error %}<p class="text-danger small">{{ report.address_error }}</p>{% endif %}
+        {% if report.candidates|length > 1 %}<details class="small mb-2"><summary class="text-secondary">{{ report.candidates|length }} kandidat lokasi untuk "{{ report.query }}"</summary>
+            <ul class="mb-0">{% for c in report.candidates %}<li>{{ c.display_name }} <code>{{ c.lat }}, {{ c.lng }}</code></li>{% endfor %}</ul></details>{% endif %}
+        <div id="geo-map" style="height: 380px; border-radius: 8px;" class="mb-2"></div>
+        <small class="text-secondary">Garis kuning = arah matahari, abu-abu = arah bayangan.</small>
+        {% endcall %}
+
+        {% call result_card('Tautan peta &amp; citra'|safe, 'bi-map', 'secondary', toolbar=False) %}
+        <div class="d-flex flex-wrap gap-2">{% for l in report.links %}<a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="{{ l.url }}">{{ l.label }}</a>{% endfor %}</div>
+        {% endcall %}
+
+        {% call result_card('POI sekitar (' ~ (report.pois or [])|length ~ ')', 'bi-pin-map', 'info', toolbar=False) %}
+        {% if report.pois %}
+        <div class="table-responsive" style="max-height: 300px"><table class="table table-dark table-sm mb-0">
+            <tbody>{% for p in report.pois %}<tr><td><a class="text-info" target="_blank" rel="noopener" href="{{ p.osm }}">{{ p.name }}</a></td><td><small>{{ p.kind }}</small></td><td class="text-end"><small>{{ p.distance_m }} m</small></td></tr>{% endfor %}</tbody>
+        </table></div>
+        {% else %}<p class="text-secondary mb-0">{{ report.pois_error or 'Tidak ada POI dalam radius.' }}</p>{% endif %}
+        {% endcall %}
+
+        {% call result_card('Titik api NASA FIRMS', 'bi-fire', 'danger', toolbar=False) %}
+        {% set f = report.fires %}
+        {% if f and f.status == 'ok' %}
+        <p class="small mb-1">{{ f.count }} titik dalam ±{{ f.box_km }} km, {{ f.days }} hari terakhir (VIIRS).</p>
+        <ul class="small mb-0">{% for p in f.points[:15] %}<li>{{ p.date }} {{ p.time }} — {{ p.distance_km }} km, confidence {{ p.confidence }}, FRP {{ p.frp }}</li>{% endfor %}</ul>
+        {% else %}<p class="text-secondary small mb-0">{{ f.message if f else '-' }}</p>{% endif %}
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% if report %}
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+    const data = JSON.parse(document.getElementById('result-data').textContent);
+    const map = L.map('geo-map').setView([data.lat, data.lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+    L.marker([data.lat, data.lng]).addTo(map).bindPopup((data.address && data.address.display_name) || 'Target');
+    (data.pois || []).slice(0, 60).forEach(p => L.circleMarker([p.lat, p.lng], {radius: 5, color: '#0dcaf0'}).addTo(map).bindTooltip(p.name + ' (' + p.kind + ')'));
+    if (data.fires && data.fires.points) data.fires.points.forEach(p => L.circleMarker([p.lat, p.lng], {radius: 6, color: '#ff3333'}).addTo(map).bindTooltip('🔥 ' + p.date));
+    function ray(bearing, km, color) {
+        const r = bearing * Math.PI / 180, d = km / 111;
+        const end = [data.lat + d * Math.cos(r), data.lng + d * Math.sin(r) / Math.cos(data.lat * Math.PI / 180)];
+        L.polyline([[data.lat, data.lng], end], {color: color, weight: 3, dashArray: '6 4'}).addTo(map);
+    }
+    if (data.sun && data.sun.elevation > 0) { ray(data.sun.azimuth, 0.25, '#ffc107'); ray(data.sun.shadow_azimuth, 0.15, '#999999'); }
+})();
+</script>
+{% endif %}
+{% endblock %}

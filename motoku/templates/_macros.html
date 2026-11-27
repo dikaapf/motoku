@@ -1,0 +1,111 @@
+{# Shared UI building blocks for result pages. #}
+
+{# Embed result data as JSON for the copy/export toolbar. #}
+{% macro result_data(data, id='result-data', tool=None) -%}
+<script type="application/json" id="{{ id }}" data-tool="{{ tool or request.endpoint }}">{{ data|tojson }}</script>
+{%- endmacro %}
+
+{# Toolbar: copy JSON, export JSON, export CSV.
+   rows: dotted path to the list used for CSV rows (empty = flatten object). #}
+{% macro export_toolbar(filename, rows='', id='result-data') -%}
+<div class="btn-group btn-group-sm result-toolbar" role="group" aria-label="{{ _('Export hasil') }}">
+    <button type="button" class="btn btn-outline-light" data-export="copy" data-source="{{ id }}" title="{{ _('Salin JSON') }}">
+        <i class="bi bi-clipboard"></i><span class="d-none d-md-inline"> {{ _('Salin') }}</span>
+    </button>
+    <button type="button" class="btn btn-outline-light" data-export="json" data-source="{{ id }}" data-filename="{{ filename }}" title="{{ _('Unduh JSON') }}">
+        <i class="bi bi-filetype-json"></i><span class="d-none d-md-inline"> JSON</span>
+    </button>
+    <button type="button" class="btn btn-outline-light" data-export="csv" data-source="{{ id }}" data-filename="{{ filename }}" data-rows="{{ rows }}" title="{{ _('Unduh CSV') }}">
+        <i class="bi bi-filetype-csv"></i><span class="d-none d-md-inline"> CSV</span>
+    </button>
+    <button type="button" class="btn btn-outline-success" data-save-case="{{ id }}" data-label="{{ filename }}" title="{{ _('Simpan hasil ke case') }}">
+        <i class="bi bi-folder-plus"></i><span class="d-none d-md-inline"> Case</span>
+    </button>
+</div>
+{%- endmacro %}
+
+{# Small inline copy button for a single value. #}
+{% macro copy_btn(value) -%}
+<button type="button" class="btn btn-link btn-sm p-0 ms-1 copy-btn" data-copy="{{ value }}" title="{{ _('Salin') }}">
+    <i class="bi bi-clipboard"></i>
+</button>
+{%- endmacro %}
+
+{# Result card with a header that carries the export toolbar. #}
+{% macro result_card(title, icon='bi-list-check', color='success', filename='motoku', rows='', toolbar=True) -%}
+<div class="card border-{{ color }} result-card mb-3">
+    <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <span><i class="bi {{ icon }} text-{{ color }}"></i> {{ title }}</span>
+        {% if toolbar %}{{ export_toolbar(filename, rows) }}{% endif %}
+    </div>
+    <div class="card-body">
+        {{ caller() }}
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro grade_badge(grade, score=None) -%}
+{% set g = grade[0] if grade else 'F' %}
+<div class="grade-badge grade-{{ g|lower }}">
+    <span class="grade-letter">{{ grade }}</span>
+    {% if score is not none %}<span class="grade-score">{{ score }}/100</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_icon(status) -%}
+{% if status == 'pass' %}<i class="bi bi-check-circle-fill text-success" title="{{ _('Lulus') }}"></i>
+{% elif status == 'warn' %}<i class="bi bi-exclamation-triangle-fill text-warning" title="{{ _('Peringatan') }}"></i>
+{% elif status == 'fail' %}<i class="bi bi-x-circle-fill text-danger" title="{{ _('Gagal') }}"></i>
+{% else %}<i class="bi bi-info-circle-fill text-info" title="{{ _('Info') }}"></i>{% endif %}
+{%- endmacro %}
+
+{# Live progress panel for a background job (Server-Sent Events). #}
+{% macro job_progress(job) -%}
+{% if job and job.status not in ('finished', 'failed') %}
+<div class="card border-info mb-3 job-panel" data-job-id="{{ job.id }}"
+     data-events-url="{{ url_for('api_job_events', job_id=job.id) }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><span class="spinner-border spinner-border-sm text-info me-1"></span>
+            <span class="job-label">{{ job.kind }}</span> — <code>{{ job.target }}</code></span>
+        <span class="badge bg-info text-dark job-status">{{ job.status }}</span>
+    </div>
+    <div class="card-body">
+        <div class="progress mb-2" role="progressbar" aria-label="{{ _('Progres job') }}" style="height: 1.2rem">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info job-bar"
+                 style="width: {{ job.progress }}%">{{ job.progress }}%</div>
+        </div>
+        <div class="small text-secondary job-message mb-2">{{ job.message or _('Menunggu worker…') }}</div>
+        <pre class="job-log small mb-0">{{ (job.log or [])[-15:]|join('\n') }}</pre>
+        <small class="text-secondary d-block mt-2">{{ _('Halaman akan dimuat ulang otomatis saat selesai. Anda boleh meninggalkan halaman ini; hasil tersimpan di') }} <a href="{{ url_for('job_list') }}" class="text-info">Jobs</a>.</small>
+    </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro risk_badge(risk) -%}
+{% set colors = {'critical': 'danger', 'high': 'danger', 'medium': 'warning text-dark', 'low': 'info text-dark', 'info': 'secondary'} %}
+<span class="badge bg-{{ colors.get(risk, 'secondary') }}{% if risk == 'critical' %} border border-light{% endif %}">{{ risk }}</span>
+{%- endmacro %}
+
+{% macro verdict_badge(verdict) -%}
+{% set colors = {'malicious': 'danger', 'suspicious': 'warning text-dark', 'clean': 'success', 'unknown': 'secondary'} %}
+{% set labels = {'malicious': _('Berbahaya'), 'suspicious': _('Mencurigakan'), 'clean': _('Bersih'), 'unknown': _('Tidak diketahui')} %}
+<span class="badge bg-{{ colors.get(verdict, 'secondary') }}">{{ labels.get(verdict, verdict or '-') }}</span>
+{%- endmacro %}
+
+{% macro cve_table(cves, limit=100) -%}
+<div class="table-responsive" style="max-height: 480px"><table class="table table-dark table-sm table-hover align-middle mb-0">
+    <thead><tr><th>{{ _('Prioritas') }}</th><th>CVE</th><th class="text-end">CVSS</th><th class="text-end">EPSS</th><th>KEV</th><th>{{ _('Ringkasan') }}</th></tr></thead>
+    <tbody>{% for c in cves[:limit] %}
+    <tr>
+        <td><span class="badge bg-{{ {'P1': 'danger', 'P2': 'warning text-dark', 'P3': 'info text-dark', 'P4': 'secondary'}[c.priority] }}">{{ c.priority }}</span></td>
+        <td class="text-nowrap"><a class="text-success" target="_blank" rel="noopener" href="https://nvd.nist.gov/vuln/detail/{{ c.id }}">{{ c.id }}</a></td>
+        <td class="text-end">{{ '%.1f'|format(c.cvss) if c.cvss is not none else '-' }}</td>
+        <td class="text-end">{{ '%.1f%%'|format(c.epss * 100) if c.epss is not none else '-' }}</td>
+        <td>{% if c.kev %}<span class="badge bg-danger" title="{{ (c.kev_info or {}).get('name', '') }}">KEV</span>{% endif %}</td>
+        <td><small class="text-secondary">{{ (c.summary or '')[:140] }}{% if (c.summary or '')|length > 140 %}…{% endif %}</small></td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="text-secondary">{{ _('Tidak ada CVE.') }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if cves|length > limit %}<small class="text-secondary">{{ _('Menampilkan {a} dari {b} — export JSON/CSV untuk semua.', a=limit, b=cves|length) }}</small>{% endif %}
+{%- endmacro %}

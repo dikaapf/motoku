@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import risk_badge %}
+{% block title %}Watchlist{% endblock %}
+{% block content %}
+<h2><i class="bi bi-binoculars-fill text-warning"></i> Watchlist &amp; Alert</h2>
+<p class="text-secondary">Pantau target secara berkala; perubahan (DNS, sertifikat, subdomain baru, port/CVE baru, reputasi, breach, typosquat baru) menjadi alert dan dikirim via webhook/email.</p>
+{% with messages = get_flashed_messages() %}{% for m in messages %}<div class="alert alert-warning py-1 small">{{ m }}</div>{% endfor %}{% endwith %}
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-warning"><div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2 mb-2">
+                    <div class="col-5"><label class="form-label small" for="w-type">Tipe</label><select class="form-select" id="w-type" name="type">{% for t in types %}<option>{{ t }}</option>{% endfor %}</select></div>
+                    <div class="col-7"><label class="form-label small" for="w-target">Target</label><input class="form-control" id="w-target" name="target" required placeholder="example.com"></div>
+                </div>
+                <label class="form-label small">Pemeriksaan</label>
+                <div class="mb-2" id="w-checks">
+                    {% for t, checks in types.items() %}{% for c in checks %}
+                    <div class="form-check form-check-inline" data-for="{{ t }}"><input class="form-check-input" type="checkbox" name="checks" value="{{ c }}" id="c-{{ t }}-{{ c }}" {% if c in defaults[t] %}checked{% endif %}><label class="form-check-label small" for="c-{{ t }}-{{ c }}">{{ c }}</label></div>
+                    {% endfor %}{% endfor %}
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col"><label class="form-label small" for="w-int">Interval</label><select class="form-select form-select-sm" id="w-int" name="interval"><option value="60">1 jam</option><option value="360">6 jam</option><option value="1440" selected>Harian</option><option value="10080">Mingguan</option></select></div>
+                    <div class="col"><label class="form-label small" for="w-min">Alert minimal</label><select class="form-select form-select-sm" id="w-min" name="min_severity">{% for s in ['info', 'low', 'medium', 'high'] %}<option {% if s == 'low' %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+                </div>
+                <input class="form-control form-control-sm mb-2" name="webhook" placeholder="Webhook URL (Slack, Discord, atau JSON)">
+                <input class="form-control form-control-sm mb-2" name="email" type="email" placeholder="Email (butuh MOTOKU_SMTP_*)">
+                <select class="form-select form-select-sm mb-2" name="case_id" aria-label="Case"><option value="">— tanpa case —</option>{% for c in cases %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}</select>
+                <input class="form-control form-control-sm mb-3" name="label" placeholder="Label (opsional)">
+                <button class="btn btn-warning w-100">Tambah ke watchlist</button>
+            </form>
+            <small class="text-secondary d-block mt-2">Pemeriksaan pertama membuat baseline; alert muncul saat ada perubahan berikutnya. Webhook/email global: <code>MOTOKU_ALERT_WEBHOOK</code>, <code>MOTOKU_ALERT_EMAIL</code>.</small>
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card border-secondary mb-3"><div class="card-header">Target dipantau ({{ items|length }})</div>
+        <div class="table-responsive"><table class="table table-dark table-sm align-middle mb-0">
+            <tbody>{% for w in items %}
+            <tr class="{% if not w.enabled %}opacity-50{% endif %}">
+                <td><span class="badge bg-dark border border-secondary">{{ w.type }}</span> <code>{{ w.target }}</code>{% if w.label %}<br><small>{{ w.label }}</small>{% endif %}
+                    {% if w.case_id %}<br><a class="small text-info" href="{{ url_for('cases.detail', case_id=w.case_id) }}">case {{ w.case_id }}</a>{% endif %}</td>
+                <td><small>{{ w.checks|join(', ') }}</small></td>
+                <td><small>tiap {{ w.interval_min }} mnt<br>terakhir {{ w.last_run or '-' }}<br>berikut {{ w.next_run or '-' }}</small></td>
+                <td><small>{{ w.last_status or 'belum jalan' }}</small></td>
+                <td class="text-nowrap">
+                    {% for action, icon, title in [('run_now', 'play-fill', 'Jalankan sekarang'), ('toggle', 'pause-fill' if w.enabled else 'play', 'Aktif/nonaktif'), ('delete', 'trash', 'Hapus')] %}
+                    <form method="POST" action="{{ url_for('watch.' ~ action, watch_id=w.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-link p-0 me-1 {% if action == 'delete' %}text-danger{% endif %}" title="{{ title }}"><i class="bi bi-{{ icon }}"></i></button></form>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% else %}<tr><td class="text-secondary">Belum ada target.</td></tr>{% endfor %}</tbody>
+        </table></div></div>
+        <div class="card border-secondary"><div class="card-header">Alert terbaru</div>
+        <ul class="list-group list-group-flush">{% for a in alerts %}
+            <li class="list-group-item bg-transparent sev-{{ a.severity }} {% if a.acknowledged %}opacity-50{% endif %}">
+                <div class="d-flex justify-content-between gap-2"><div>{{ risk_badge(a.severity) }} <strong>{{ a.title }}</strong> <small class="text-secondary">{{ a.ts }}</small>
+                    {% if a.detail %}<div class="small text-secondary text-break">{{ a.detail }}</div>{% endif %}
+                    {% if a.delivery %}<div class="small text-secondary">Pengiriman: {% for k, v in a.delivery.items() %}{{ k }}={{ v }} {% endfor %}</div>{% endif %}</div>
+                {% if not a.acknowledged %}<form method="POST" action="{{ url_for('watch.ack', alert_id=a.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-secondary">Ack</button></form>{% endif %}</div>
+            </li>
+        {% else %}<li class="list-group-item bg-transparent text-secondary">Belum ada alert.</li>{% endfor %}</ul></div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const typeSel = document.getElementById('w-type');
+function syncChecks() {
+    document.querySelectorAll('#w-checks [data-for]').forEach(el => {
+        const show = el.dataset.for === typeSel.value;
+        el.hidden = !show;
+        el.querySelector('input').disabled = !show;
+    });
+}
+typeSel.addEventListener('change', syncChecks); syncChecks();
+</script>
+{% endblock %}

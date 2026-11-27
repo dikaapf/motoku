@@ -85,11 +85,17 @@ def generate_links(name, selected_ids=None):
     return results
 
 
-def fetch_results(name, max_results=8):
+def wikipedia_results(name, max_results=8, lang='en'):
+    """Fetch encyclopedic context from Wikipedia.
+
+    This is *not* a general web-search scraper; the UI labels it explicitly
+    as Wikipedia enrichment. General web search is provided as deep links
+    through :func:`generate_links`.
+    """
     import requests
 
     headers = {
-        'User-Agent': 'MotokuOSINT/1.0',
+        'User-Agent': 'MotokuOSINT/1.0 (+https://github.com/)',
     }
 
     params = {
@@ -101,20 +107,25 @@ def fetch_results(name, max_results=8):
     }
 
     try:
-        resp = requests.get('https://en.wikipedia.org/w/api.php',
+        resp = requests.get(f'https://{lang}.wikipedia.org/w/api.php',
                             params=params, headers=headers, timeout=15)
+        resp.raise_for_status()
         data = resp.json()
         items = []
         for result in data.get('query', {}).get('search', []):
             title = result.get('title', '')
             snippet = result.get('snippet', '')
             snippet = snippet.replace('<span class="searchmatch">', '').replace('</span>', '')
-            page_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+            page_url = f"https://{lang}.wikipedia.org/wiki/{title.replace(' ', '_')}"
             items.append({
                 'title': title,
                 'url': page_url,
                 'snippet': snippet,
             })
         return items
-    except:
+    except Exception:
         return []
+
+
+# Backwards-compatible alias for existing callers.
+fetch_results = wikipedia_results

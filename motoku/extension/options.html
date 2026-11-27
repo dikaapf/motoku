@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="id">
+<head><meta charset="UTF-8"><title>Motoku — Pengaturan</title>
+<style>body { font: 14px system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; } label { display: block; margin-top: 12px; font-weight: 600; } input { width: 100%; padding: 6px; box-sizing: border-box; } button { margin-top: 16px; padding: 6px 16px; } #status { margin-top: 8px; color: #0a7d45; }</style>
+</head>
+<body>
+  <h2>Motoku OSINT — Pengaturan</h2>
+  <label for="server">URL server</label><input id="server" placeholder="http://127.0.0.1:5000">
+  <label for="token">API token</label><input id="token" type="password" placeholder="mtk_…">
+  <p style="font-size:12px;color:#666">Buat token di <em>Server → Tools → API Token</em> dengan scope <code>read</code>, <code>write</code>, dan <code>scan</code>.</p>
+  <button id="save">Simpan &amp; uji koneksi</button>
+  <div id="status"></div>
+  <script src="common.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Recon Domain') }}{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-radar text-success"></i> {{ _('Recon Domain Lengkap') }}</h2>
+        <p class="text-secondary">Satu input domain → RDAP, DNS security, subdomain multi-source, takeover, HTTP probe, screenshot, TLS + CT, port scan, Wayback/urlscan/favicon, threat intel, CVE (EPSS/KEV), typosquatting, dan bucket cloud. Berjalan di background job.</p>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-5 mb-3">
+        <div class="card border-success"><div class="card-body">
+            {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="domain" class="form-label">Domain</label>
+                <div class="input-group mb-3"><span class="input-group-text"><i class="bi bi-globe"></i></span>
+                    <input type="text" class="form-control form-control-lg" id="domain" name="domain" placeholder="example.com" required value="{{ request.form.get('domain', '') }}"></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="ports" value="1" id="opt-ports" checked>
+                    <label class="form-check-label" for="opt-ports">Port scan domain utama {% if nmap_available %}<small class="text-success">(nmap)</small>{% endif %}</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="screenshots" value="1" id="opt-shots" {% if screenshot_backend %}checked{% else %}disabled{% endif %}>
+                    <label class="form-check-label" for="opt-shots">Screenshot host hidup {% if screenshot_backend %}<small class="text-success">({{ screenshot_backend }})</small>{% else %}<small class="text-secondary">(Chromium/Playwright tidak ditemukan)</small>{% endif %}</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="archive" value="1" id="opt-archive" checked>
+                    <label class="form-check-label" for="opt-archive">Wayback / urlscan / favicon</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="intel" value="1" id="opt-intel" checked>
+                    <label class="form-check-label" for="opt-intel">Threat intel + CVE (EPSS, KEV)</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="typosquat" value="1" id="opt-typo" checked>
+                    <label class="form-check-label" for="opt-typo">Typosquatting (600 variasi)</label></div>
+                <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="cloud" value="1" id="opt-cloud" checked>
+                    <label class="form-check-label" for="opt-cloud">Bucket cloud (S3/GCS/Azure)</label></div>
+                <label class="form-label small" for="case_id">{{ _('Simpan otomatis ke case') }}</label>
+                <select class="form-select form-select-sm mb-3" id="case_id" name="case_id">
+                    <option value="">{{ _('— jangan simpan —') }}</option>
+                    <option value="__new__">{{ _('+ Case baru (judul = domain)') }}</option>
+                    {% for c in cases %}<option value="{{ c.id }}" {% if c.id == selected_case %}selected{% endif %}>{{ c.title }} ({{ c.id }})</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn btn-success w-100"><i class="bi bi-play-fill"></i> {{ _('Mulai Recon') }}</button>
+                <small class="text-secondary d-block mt-2">Estimasi 2–6 menit tergantung jumlah subdomain. Gunakan hanya pada aset yang Anda miliki atau berizin.</small>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card border-secondary">
+            <div class="card-header"><i class="bi bi-clock-history"></i> {{ _('Recon terakhir') }}</div>
+            {% if recent %}
+            <div class="list-group list-group-flush">
+                {% for j in recent %}
+                <a href="{{ url_for('recon_report', job_id=j.id) }}" class="list-group-item list-group-item-action bg-transparent d-flex justify-content-between align-items-center">
+                    <span><code>{{ j.target }}</code><br><small class="text-secondary">{{ j.created_at }}</small></span>
+                    <span class="badge bg-{{ {'finished': 'success', 'failed': 'danger', 'running': 'info', 'queued': 'secondary'}[j.status] }}">{{ j.status }}{% if j.status == 'running' %} {{ j.progress }}%{% endif %}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}<div class="card-body text-secondary">{{ _('Belum ada recon.') }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laporan — {{ r.case.title }}</title>
+<style>
+    :root { --ink: #1b1f1b; --muted: #5b655b; --line: #d8ddd8; --accent: #0a7d45; }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--ink); margin: 0; padding: 32px; font-size: 12.5px; line-height: 1.5; background: #fff; }
+    h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 4px; margin-top: 28px; }
+    h3 { font-size: 13px; margin: 16px 0 6px; color: var(--accent); }
+    .meta { color: var(--muted); } code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 11.5px; word-break: break-all; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; } th, td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { background: #f2f5f2; font-weight: 600; }
+    .sev { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; color: #fff; }
+    .sev-critical { background: #8b0000; } .sev-high { background: #c62828; } .sev-medium { background: #e09b00; } .sev-low { background: #1e88a8; } .sev-info { background: #777; }
+    .cards { display: flex; gap: 10px; flex-wrap: wrap; } .card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; min-width: 110px; }
+    .card b { font-size: 18px; display: block; }
+    .ok { color: var(--accent); font-weight: 600; } .bad { color: #c62828; font-weight: 600; }
+    .note { white-space: pre-wrap; border-left: 3px solid var(--line); padding-left: 8px; margin: 6px 0; }
+    .muted { color: var(--muted); } .small { font-size: 11px; }
+    footer { margin-top: 32px; color: var(--muted); font-size: 10.5px; border-top: 1px solid var(--line); padding-top: 8px; }
+    @media print { body { padding: 0; } h2 { break-after: avoid; } tr { break-inside: avoid; } }
+    @page { size: A4; margin: 16mm 14mm; }
+</style>
+</head>
+<body>
+<header>
+    <div class="meta small">MOTOKU OSINT · LAPORAN INVESTIGASI · RAHASIA</div>
+    <h1>{{ r.case.title }}</h1>
+    <div class="meta">Case <code>{{ r.case.id }}</code> · status {{ r.case.status }} · dibuat {{ r.case.created_at }} · laporan {{ r.generated_at }}{% if r.case.tags %} · tag: {{ r.case.tags|join(', ') }}{% endif %}</div>
+    {% if r.case.description %}<p class="note">{{ r.case.description }}</p>{% endif %}
+</header>
+
+<h2>Ringkasan</h2>
+<div class="cards">
+    <div class="card"><b>{{ r.summary.entities }}</b>entity</div>
+    <div class="card"><b>{{ r.summary.relations }}</b>relasi</div>
+    <div class="card"><b>{{ r.summary.findings_open }}</b>temuan terbuka</div>
+    {% for s, n in r.summary.severity.items() if n %}<div class="card"><b>{{ n }}</b><span class="sev sev-{{ s }}">{{ s }}</span></div>{% endfor %}
+</div>
+<p class="small muted">Entity per tipe: {% for t, n in r.summary.entity_types.items() %}{{ t }} ({{ n }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
+
+<h2>Temuan</h2>
+{% if r.findings %}
+<table><thead><tr><th>#</th><th>Severity</th><th>Status</th><th>Temuan</th><th>Entity</th></tr></thead><tbody>
+{% for f in r.findings %}<tr><td>{{ f.id }}</td><td><span class="sev sev-{{ f.severity }}">{{ f.severity }}</span></td><td>{{ f.status }}</td>
+    <td><b>{{ f.title }}</b>{% if f.detail %}<br><span class="muted">{{ f.detail }}</span>{% endif %}</td>
+    <td>{% if f.entity_value %}{{ f.entity_type }}: <code>{{ f.entity_value }}</code>{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+{% else %}<p class="muted">Tidak ada temuan.</p>{% endif %}
+
+<h2>Entity</h2>
+{% for t, items in r.entities_by_type.items() %}
+<h3>{{ t }} ({{ items|length }})</h3>
+<table><thead><tr><th style="width:45%">Nilai</th><th>Label</th><th>Sumber</th><th>Pertama</th></tr></thead><tbody>
+{% for e in items[:300] %}<tr><td><code>{{ e.value }}</code></td><td>{{ e.label or '' }}</td><td class="small">{{ e.sources|join(', ') }}</td><td class="small">{{ e.first_seen }}</td></tr>{% endfor %}
+</tbody></table>{% if items|length > 300 %}<p class="small muted">… {{ items|length - 300 }} lainnya (lihat ekspor JSON/CSV).</p>{% endif %}
+{% endfor %}
+
+{% if r.relations %}
+<h2>Relasi</h2>
+<table><thead><tr><th>Dari</th><th>Relasi</th><th>Ke</th></tr></thead><tbody>
+{% for x in r.relations[:400] %}<tr><td><code>{{ x.src }}</code></td><td>{{ x.kind }}</td><td><code>{{ x.dst }}</code></td></tr>{% endfor %}
+</tbody></table>
+{% endif %}
+
+{% if r.notes %}<h2>Catatan analis</h2>
+{% for n in r.notes %}<div class="small muted">{{ n.created_at }} · {{ n.author or '-' }}{% if n.entity_value %} · {{ n.entity_value }}{% endif %}</div><div class="note">{{ n.body }}</div>{% endfor %}{% endif %}
+
+{% if r.attachments %}<h2>Lampiran (bukti)</h2>
+<table><thead><tr><th>File</th><th>SHA-256</th><th>Ukuran</th><th>Ditambahkan</th></tr></thead><tbody>
+{% for a in r.attachments %}<tr><td>{{ a.filename }}{% if a.note %}<br><span class="muted small">{{ a.note }}</span>{% endif %}</td><td><code>{{ a.sha256 }}</code></td><td>{{ a.size }}</td><td class="small">{{ a.created_at }} · {{ a.author }}</td></tr>{% endfor %}
+</tbody></table>{% endif %}
+
+<h2>Timeline</h2>
+<table><tbody>{% for e in r.timeline|reverse %}<tr><td class="small" style="width:140px">{{ e.ts }}</td><td style="width:80px">{{ e.kind }}</td><td>{{ e.summary }}</td></tr>{% endfor %}</tbody></table>
+
+<h2>Chain of custody</h2>
+<p>{{ r.custody.count }} catatan · integritas:
+    {% if r.custody.valid %}<span class="ok">VALID</span> · head <code>{{ r.custody.head }}</code>{% else %}<span class="bad">RUSAK pada catatan #{{ r.custody.broken_at }}</span>{% endif %}</p>
+<p class="small muted">Setiap perubahan case dicatat dengan hash SHA-256 berantai. Ekspor laporan ini juga tercatat beserta hash isinya.</p>
+
+<footer>Dibuat oleh Motoku OSINT. Informasi berasal dari sumber terbuka dan alat otomatis; verifikasi sebelum menarik kesimpulan atau mengambil tindakan.</footer>
+</body>
+</html>

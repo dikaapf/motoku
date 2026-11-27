@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Custody {{ case.id }}{% endblock %}
+{% block content %}
+<h2><i class="bi bi-link-45deg text-success"></i> Chain of custody — {{ case.title }}</h2>
+<p>
+    {% if verify.valid %}<span class="badge bg-success">VALID</span> {{ verify.count }} catatan · head <code>{{ verify.head }}</code>
+    {% else %}<span class="badge bg-danger">RUSAK</span> rantai terputus pada catatan #{{ verify.broken_at }} — ada catatan yang diubah/dihapus di luar aplikasi.{% endif %}
+</p>
+<p class="small text-secondary">Hash tiap catatan = SHA-256(hash sebelumnya + isi catatan). Mengubah satu catatan lama memutus seluruh rantai setelahnya.</p>
+<div class="table-responsive"><table class="table table-dark table-sm table-striped">
+    <thead><tr><th>#</th><th>Waktu</th><th>Aktor</th><th>Aksi</th><th>Objek</th><th>Digest</th><th>Hash</th></tr></thead>
+    <tbody>{% for c in log %}<tr class="{% if verify.broken_at and c.id >= verify.broken_at %}table-danger{% endif %}">
+        <td>{{ c.id }}</td><td class="text-nowrap small">{{ c.ts }}</td><td>{{ c.actor }}</td><td>{{ c.action }}</td>
+        <td class="small">{{ c.object_type or '' }} {{ c.object_id or '' }}</td><td><code class="small">{{ (c.digest or '')[:16] }}</code></td><td><code class="small">{{ c.hash[:16] }}…</code></td></tr>{% endfor %}</tbody>
+</table></div>
+<a href="{{ url_for('cases.detail', case_id=case.id) }}" class="btn btn-sm btn-outline-secondary">← Kembali ke case</a>
+{% endblock %}

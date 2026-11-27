@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, grade_badge, status_icon, copy_btn %}
+{% block title %}Headers &amp; TLS{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-shield-check text-info"></i> Security Headers &amp; TLS</h2>
+        <p class="text-secondary">Grade header keamanan HTTP (HSTS, CSP, X-Frame-Options, dll.), cookie flags, kebocoran versi server, dan detail sertifikat TLS.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-info">
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="url" class="form-label">URL</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="url" name="url"
+                                   placeholder="https://example.com" required value="{{ request.form.get('url', '') }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100"><i class="bi bi-shield-check"></i> Periksa</button>
+                </form>
+            </div>
+        </div>
+        {% if report %}
+        <div class="card border-secondary mt-3">
+            <div class="card-body d-flex align-items-center gap-3">
+                {{ grade_badge(report.grade, report.score) }}
+                <div class="text-break">
+                    <h6 class="mb-1">{{ report.final_url }}</h6>
+                    <small class="text-secondary">HTTP {{ report.status_code }}{% if report.redirects %} · {{ report.redirects|length }} redirect{% endif %}</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-8">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if report %}
+        {{ result_data(report) }}
+        {% if report.cert_error %}
+        <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle"></i> Sertifikat TLS gagal diverifikasi; header diambil tanpa verifikasi sertifikat.</div>
+        {% endif %}
+
+        {% call result_card('Security Headers', 'bi-list-check', 'info', 'headers-' ~ (report.final_url|replace('https://', '')|replace('http://', '')|replace('/', '_')), 'checks') %}
+        <div class="table-responsive">
+        <table class="table table-dark table-sm align-middle mb-0">
+            <thead><tr><th></th><th>Header</th><th>Nilai / Catatan</th></tr></thead>
+            <tbody>
+            {% for c in report.checks %}
+            <tr>
+                <td>{{ status_icon(c.status) }}</td>
+                <td class="text-nowrap"><code>{{ c.header }}</code></td>
+                <td>
+                    {% if c.value %}<code class="small text-break">{{ c.value[:300] }}</code><br>{% endif %}
+                    <small class="text-secondary">{{ c.note }}</small>
+                    {% if c.recommendation %}<small class="d-block text-warning"><i class="bi bi-lightbulb"></i> {{ c.recommendation }}{{ copy_btn(c.recommendation) }}</small>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% if report.leaks %}
+        <h6 class="mt-3">Informasi yang bocor</h6>
+        <ul class="small mb-0">{% for l in report.leaks %}<li><code>{{ l.header }}: {{ l.value }}</code></li>{% endfor %}</ul>
+        {% endif %}
+        {% if report.cookies %}
+        <h6 class="mt-3">Cookie</h6>
+        <table class="table table-dark table-sm mb-0">
+            <thead><tr><th>Nama</th><th>Secure</th><th>HttpOnly</th><th>SameSite</th></tr></thead>
+            <tbody>{% for c in report.cookies %}
+            <tr><td><code>{{ c.name }}</code></td>
+                <td>{{ status_icon('pass' if c.secure else 'fail') }}</td>
+                <td>{{ status_icon('pass' if c.httponly else 'warn') }}</td>
+                <td>{{ c.samesite or '-' }}</td></tr>
+            {% endfor %}</tbody>
+        </table>
+        {% endif %}
+        {% endcall %}
+
+        {% call result_card('Sertifikat TLS', 'bi-lock-fill', 'success', toolbar=False) %}
+        {% set t = report.tls %}
+        {% if t %}
+        {% if t.issues %}
+        <div class="alert alert-danger small py-2">{% for i in t.issues %}<div><i class="bi bi-x-circle"></i> {{ i }}</div>{% endfor %}</div>
+        {% else %}
+        <p class="text-success small"><i class="bi bi-check-circle"></i> Sertifikat valid dan dipercaya.</p>
+        {% endif %}
+        <table class="table table-dark table-striped table-sm mb-0">
+            <tbody>
+                <tr><td class="fw-bold">Subject</td><td>{{ t.subject.commonName or '-' }} {% if t.subject.organizationName %}<small class="text-secondary">({{ t.subject.organizationName }})</small>{% endif %}</td></tr>
+                <tr><td class="fw-bold">Issuer</td><td>{{ t.issuer.commonName or '-' }} {% if t.issuer.organizationName %}<small class="text-secondary">({{ t.issuer.organizationName }})</small>{% endif %}</td></tr>
+                <tr><td class="fw-bold">Berlaku</td><td>{{ t.not_before[:10] if t.not_before else '-' }} → {{ t.not_after[:10] if t.not_after else '-' }}
+                    {% if t.days_left is not none %}<span class="badge bg-{{ 'danger' if t.days_left < 14 else 'warning text-dark' if t.days_left < 30 else 'success' }}">{{ t.days_left }} hari lagi</span>{% endif %}</td></tr>
+                <tr><td class="fw-bold">Protokol</td><td>{{ t.protocol }} · {{ t.cipher }} ({{ t.cipher_bits }} bit)</td></tr>
+                <tr><td class="fw-bold">Serial</td><td><code class="small">{{ t.serial }}</code>{{ copy_btn(t.serial) }}</td></tr>
+                <tr><td class="fw-bold">SAN ({{ t.sans|length }})</td><td><small>{{ t.sans[:30]|join(', ') }}{% if t.sans|length > 30 %} …{% endif %}</small></td></tr>
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-secondary mb-0">{{ report.tls_error or 'Tidak tersedia' }}</p>
+        {% endif %}
+        {% endcall %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,8 @@
 import time
+
 import requests
+
+from db import provider_call
 
 OPENSKY_API = 'https://opensky-network.org/api/states/all'
 _cache = {'data': None, 'time': 0, 'ttl': 10}
@@ -17,8 +20,9 @@ def _fetch():
     if _cache['data'] and now - _cache['time'] < _cache['ttl']:
         return _cache['data']
     try:
-        resp = requests.get(OPENSKY_API, timeout=15)
-        resp.raise_for_status()
+        with provider_call('opensky'):
+            resp = requests.get(OPENSKY_API, timeout=15)
+            resp.raise_for_status()
         raw = resp.json()
         flights = []
         for s in raw.get('states', []):

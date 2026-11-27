@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Status{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-activity text-success"></i> Status &amp; Provider Quota</h2>
+        <p class="text-secondary">Ringkasan konfigurasi runtime, penyimpanan, rate limit, dan pemakaian provider eksternal.</p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-success h-100">
+            <div class="card-body">
+                <small class="text-secondary d-block">Tracking records</small>
+                <h3 class="mb-0">{{ db_stats.tracking_total }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-info h-100">
+            <div class="card-body">
+                <small class="text-secondary d-block">CCTV cameras</small>
+                <h3 class="mb-0">{{ db_stats.camera_total }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <small class="text-secondary d-block">Rate limit</small>
+                <h5 class="mb-0">
+                    {% if config.rate_limit_enabled %}
+                    {{ config.rate_limit_requests }} / {{ config.rate_limit_window }}s
+                    {% else %}
+                    Nonaktif
+                    {% endif %}
+                </h5>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card border-secondary h-100">
+            <div class="card-body">
+                <small class="text-secondary d-block">Blocked requests</small>
+                <h3 class="mb-0">{{ rate_stats.blocked_total }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card border-secondary h-100">
+            <div class="card-header bg-dark"><i class="bi bi-gear"></i> Konfigurasi</div>
+            <div class="card-body">
+                <table class="table table-dark table-sm mb-0">
+                    <tbody>
+                        <tr><th>Database</th><td><code>{{ config.db_path }}</code></td></tr>
+                        <tr><th>Debug</th><td>{{ 'Aktif' if config.debug else 'Nonaktif' }}</td></tr>
+                        <tr><th>Basic auth</th><td>{{ 'Aktif' if config.auth_enabled else 'Nonaktif' }}</td></tr>
+                        <tr><th>CSRF</th><td>{{ 'Aktif' if config.csrf_enabled else 'Nonaktif' }}</td></tr>
+                        <tr><th>Rate limit</th><td>{{ 'Aktif' if config.rate_limit_enabled else 'Nonaktif' }}</td></tr>
+                        <tr><th>Tracked clients</th><td>{{ rate_stats.tracked_clients }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-secondary h-100">
+            <div class="card-header bg-dark"><i class="bi bi-database"></i> Cache &amp; Dataset</div>
+            <div class="card-body">
+                <table class="table table-dark table-sm mb-0">
+                    <tbody>
+                        <tr><th>Cache backend</th><td>
+                            <span class="badge bg-{{ 'success' if cache_info.backend == 'redis' else 'secondary' }}">{{ cache_info.backend }}</span>
+                            {% if cache_info.keys is not none %}<small class="text-secondary">{{ cache_info.keys }} key</small>{% endif %}
+                            {% if cache_info.backend != 'redis' %}<small class="d-block text-secondary">Set <code>MOTOKU_REDIS_URL</code> untuk cache bersama antar worker.</small>{% endif %}
+                        </td></tr>
+                        <tr><th>WhatsMyName</th><td>{{ wmn.total_sites }} situs <small class="text-secondary">(update {{ wmn.updated or '-' }})</small></td></tr>
+                        <tr><th>Disposable domains</th><td>{{ disposable_total }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-secondary mt-3">
+    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cloud-arrow-up"></i> Provider &amp; Kuota</span>
+        <small class="text-secondary">kuota harian lokal (UTC), reset tiap hari</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover mb-0 align-middle">
+            <thead>
+                <tr><th>Provider</th><th>Status</th><th class="text-end">Hari ini</th><th class="text-end">Kuota</th>
+                    <th class="text-end">Calls</th><th class="text-end">Cache hit</th><th class="text-end">Errors</th><th>Cache TTL</th><th>Last call</th></tr>
+            </thead>
+            <tbody>
+                {% for p in registered %}
+                <tr>
+                    <td><code>{{ p.name }}</code><br><small class="text-secondary">{{ p.description }}</small></td>
+                    <td>
+                        {% if p.configured %}<span class="badge bg-success">Aktif</span>
+                        {% else %}<span class="badge bg-secondary" title="Set {{ p.key_env }}">Butuh key</span><br><small><code>{{ p.key_env }}</code></small>{% endif %}
+                    </td>
+                    <td class="text-end">{{ p.used_today }}</td>
+                    <td class="text-end">{% if p.daily_quota %}{{ p.remaining }} / {{ p.daily_quota }}{% else %}∞{% endif %}</td>
+                    <td class="text-end">{{ p.usage.calls if p.usage else 0 }}</td>
+                    <td class="text-end">{{ p.usage.cache_hits if p.usage else 0 }}</td>
+                    <td class="text-end {% if p.usage and p.usage.errors %}text-danger{% endif %}">{{ p.usage.errors if p.usage else 0 }}</td>
+                    <td><small>{{ (p.ttl // 60) }} mnt</small></td>
+                    <td><small class="text-secondary">{{ p.usage.last_called_at if p.usage and p.usage.last_called_at else '-' }}</small></td>
+                </tr>
+                {% endfor %}
+                {% for provider in providers %}
+                <tr>
+                    <td><code>{{ provider.provider }}</code><br><small class="text-secondary">legacy (tanpa cache)</small></td>
+                    <td><span class="badge bg-secondary">-</span></td>
+                    <td class="text-end">-</td><td class="text-end">∞</td>
+                    <td class="text-end">{{ provider.calls }}</td>
+                    <td class="text-end">{{ provider.cache_hits }}</td>
+                    <td class="text-end {% if provider.errors %}text-danger{% endif %}">{{ provider.errors }}</td>
+                    <td>-</td>
+                    <td><small class="text-secondary">{{ provider.last_called_at or '-' }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-secondary mt-4 mb-0">
+    <i class="bi bi-info-circle"></i>
+    Kuota di sini adalah batas lokal yang ditegakkan aplikasi agar tidak melampaui limit provider;
+    cache hit tidak mengurangi kuota. Sisa kuota resmi tetap mengikuti dashboard masing-masing provider.
+</div>
+{% endblock %}

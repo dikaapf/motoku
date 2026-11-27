@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local data / runtime artifacts
+motoku/data/tracking.json
+motoku/data/*.db
+motoku/data/*.sqlite
+motoku/data/*.sqlite3
+motoku/data/*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+motoku/data/screenshots/
+motoku/data/attachments/

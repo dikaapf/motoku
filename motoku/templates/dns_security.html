@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, grade_badge, status_icon, copy_btn %}
+{% block title %}DNS Security{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-shield-lock-fill text-success"></i> DNS Security Analyzer</h2>
+        <p class="text-secondary">Nilai postur keamanan email &amp; DNS: SPF, DKIM, DMARC, DNSSEC, MTA-STS, TLS-RPT, CAA, dan BIMI.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-success">
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="domain" class="form-label">Domain</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-globe"></i></span>
+                            <input type="text" class="form-control form-control-lg" id="domain" name="domain"
+                                   placeholder="example.com" required value="{{ request.form.get('domain', '') }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100"><i class="bi bi-shield-check"></i> Analisa</button>
+                </form>
+            </div>
+        </div>
+        {% if report %}
+        <div class="card border-secondary mt-3">
+            <div class="card-body d-flex align-items-center gap-3">
+                {{ grade_badge(report.grade, report.score) }}
+                <div>
+                    <h5 class="mb-1">{{ report.domain }}</h5>
+                    <small class="text-secondary">Skor dihitung dari bobot setiap temuan. A+ = konfigurasi lengkap.</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-8">
+        {% if error %}
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+        {% endif %}
+        {% if report %}
+        {{ result_data(report) }}
+        {% set titles = {'spf': 'SPF', 'dmarc': 'DMARC', 'dkim': 'DKIM', 'dnssec': 'DNSSEC', 'mta_sts': 'MTA-STS & TLS-RPT', 'extra': 'CAA & BIMI'} %}
+
+        {% call result_card('Temuan', 'bi-clipboard-check', 'success', 'dns-security-' ~ report.domain) %}
+        {% for key, section in report.sections.items() %}
+        <h6 class="border-bottom border-secondary pb-1 mt-3 {% if loop.first %}mt-0{% endif %}">{{ titles[key] }}</h6>
+        <ul class="list-group list-group-flush check-list mb-2">
+            {% for c in section.checks %}
+            <li class="list-group-item px-0">
+                {{ status_icon(c.status) }} <strong>{{ c.title }}</strong>
+                <small class="text-secondary d-block ms-4">{{ c.detail }}</small>
+                {% if c.recommendation %}<small class="d-block ms-4 text-warning"><i class="bi bi-lightbulb"></i> {{ c.recommendation }}</small>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% if key in ('spf', 'dmarc', 'mta_sts') and section.records %}
+            {% for r in section.records %}<code class="d-block small text-break mb-1">{{ r }}</code>{% endfor %}
+        {% endif %}
+        {% if key == 'spf' and section.parsed %}
+        <details class="small mb-2"><summary class="text-secondary">Mekanisme SPF ({{ section.parsed.mechanisms|length }})</summary>
+            <ul class="mb-0">{% for m in section.parsed.mechanisms %}<li><code>{{ m.qualifier if m.qualifier != '+' else '' }}{{ m.name }}{{ ':' ~ m.value if m.value else '' }}</code></li>{% endfor %}</ul>
+        </details>
+        {% endif %}
+        {% if key == 'dkim' and section.selectors %}
+        <ul class="small mb-2">{% for s in section.selectors %}<li><code>{{ s.selector }}._domainkey</code> — {{ s.key_type|upper }}{% if s.key_bits_approx %} ~{{ s.key_bits_approx }} bit{% endif %}{% if s.revoked %} <span class="text-danger">(revoked)</span>{% endif %}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if key == 'mta_sts' and section.policy %}
+        <small class="d-block text-secondary mb-2">Policy: mode={{ section.policy.mode }}, max_age={{ section.policy.max_age }}, mx={{ section.policy.mx|join(', ') }}</small>
+        {% endif %}
+        {% if key == 'extra' and section.caa %}
+            {% for r in section.caa %}<code class="d-block small">{{ r }}</code>{% endfor %}
+        {% endif %}
+        {% endfor %}
+        {% endcall %}
+
+        {% if report.recommendations %}
+        {% call result_card('Rekomendasi Perbaikan', 'bi-lightbulb', 'warning', toolbar=False) %}
+        <ol class="mb-0">{% for r in report.recommendations %}<li>{{ r }}{{ copy_btn(r) }}</li>{% endfor %}</ol>
+        {% endcall %}
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

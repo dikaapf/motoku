@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Provider &amp; Kuota{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-speedometer2 text-success"></i> Provider &amp; Kuota</h2>
+        <small class="text-secondary">Cache: {{ cache_info.backend }} · kuota lokal reset harian (UTC) · riwayat 14 hari</small>
+    </div>
+    <div>
+        <button class="btn btn-sm btn-outline-success" id="refresh-quota"><i class="bi bi-arrow-repeat"></i> Ambil kuota dari provider</button>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('providers_dashboard', format='json') }}">JSON</a>
+    </div>
+</div>
+<small class="text-secondary d-block mb-3" id="refresh-status"></small>
+{% for category, items in groups.items() %}
+<h5 class="mt-4 border-bottom border-secondary pb-1">{{ category }}</h5>
+<div class="row g-3">
+    {% for p in items %}
+    <div class="col-md-6 col-xl-4">
+        <div class="card h-100 border-{{ 'success' if p.configured else 'secondary' }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><strong><code>{{ p.name }}</code></strong><br><small class="text-secondary">{{ p.description }}</small></div>
+                    {% if not p.key_env %}<span class="badge bg-success">gratis</span>
+                    {% elif p.has_key %}<span class="badge bg-success">key aktif</span>
+                    {% elif p.key_optional %}<span class="badge bg-info text-dark">tanpa key</span>
+                    {% else %}<span class="badge bg-secondary">butuh key</span>{% endif %}
+                </div>
+                {% if p.key_env and not p.has_key %}<small class="d-block mt-1">Set <code>{{ p.key_env }}</code>{% if p.homepage %} · <a class="text-info" href="{{ p.homepage }}" target="_blank" rel="noopener">daftar</a>{% endif %}</small>{% endif %}
+                <div class="mt-2 small">
+                    {% if p.daily_quota %}
+                    <div class="d-flex justify-content-between"><span>Kuota lokal hari ini</span><span>{{ p.used_today }} / {{ p.daily_quota }}</span></div>
+                    <div class="progress mb-1" style="height: .5rem" role="progressbar" aria-label="Kuota {{ p.name }}">
+                        <div class="progress-bar bg-{{ 'danger' if p.quota_pct >= 90 else 'warning' if p.quota_pct >= 60 else 'success' }}" style="width: {{ [p.quota_pct, 100]|min }}%"></div>
+                    </div>
+                    {% else %}<div class="text-secondary">Tanpa batas lokal · {{ p.used_today }} hari ini</div>{% endif %}
+                    {% if p.remote_quota %}<div class="text-info">Provider: sisa {{ p.remote_quota.remaining if p.remote_quota.remaining is not none else '?' }}{% if p.remote_quota.limit %} / {{ p.remote_quota.limit }}{% endif %} {{ p.remote_quota.note or '' }} <span class="text-secondary">({{ p.remote_quota.at }})</span></div>{% endif %}
+                    <div class="d-flex justify-content-between text-secondary mt-1">
+                        <span>{{ p.usage.calls }} call · {{ p.usage.errors }} error</span>
+                        <span>cache hit {{ p.hit_ratio ~ '%' if p.hit_ratio is not none else '-' }} · TTL {{ p.ttl // 3600 if p.ttl >= 3600 else p.ttl // 60 }}{{ 'j' if p.ttl >= 3600 else 'm' }}</span>
+                    </div>
+                    {% set peak = [p.history|max, 1]|max %}
+                    <svg class="w-100 mt-1" height="28" viewBox="0 0 140 28" preserveAspectRatio="none" role="img" aria-label="Pemakaian 14 hari {{ p.name }}">
+                        {% for v in p.history %}<rect x="{{ loop.index0 * 10 + 1 }}" y="{{ 28 - (26 * v / peak)|round(0, 'ceil') }}" width="8" height="{{ (26 * v / peak)|round(0, 'ceil') }}" fill="{{ '#00cc6a' if v else '#1a2a1a' }}"><title>{{ days[loop.index0] }}: {{ v }} call</title></rect>{% endfor %}
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}
+{% block extra_js %}
+<script>
+document.getElementById('refresh-quota').addEventListener('click', function () {
+    const status = document.getElementById('refresh-status');
+    this.disabled = true;
+    status.textContent = 'Menghubungi provider…';
+    fetch('{{ url_for("providers_refresh") }}', {method: 'POST', headers: {'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content}})
+        .then(r => r.json())
+        .then(d => { status.textContent = d.refreshed.length ? 'Diperbarui: ' + d.refreshed.join(', ') : 'Tidak ada provider dengan endpoint kuota yang terkonfigurasi (Shodan, VirusTotal, GitHub).'; if (d.refreshed.length) setTimeout(() => location.reload(), 600); })
+        .catch(e => { status.textContent = 'Gagal: ' + e; })
+        .finally(() => { this.disabled = false; });
+});
+</script>
+{% endblock %}

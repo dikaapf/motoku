@@ -1,75 +1,88 @@
 {% extends "base.html" %}
+{% from "_macros.html" import result_data, result_card, job_progress, risk_badge, copy_btn %}
 {% block title %}Port Scanner{% endblock %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <h2><i class="bi bi-plug-fill text-danger"></i> Port Scanner</h2>
-        <p class="text-secondary">Scan 23 port umum pada target host. Cek service apa yang berjalan.</p>
+        <p class="text-secondary">
+            Scan port TCP dengan deteksi versi layanan
+            {% if nmap_available %}(<span class="text-success">nmap terdeteksi</span>){% else %}(nmap tidak terpasang — memakai TCP connect + banner grab){% endif %}
+            dan rating risiko per layanan. Scan hanya host yang Anda miliki atau berizin.
+        </p>
     </div>
 </div>
 
 <div class="row">
-    <div class="col-md-5">
+    <div class="col-lg-4 mb-3">
         <div class="card border-danger">
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
-                        <label for="target" class="form-label">Host Target</label>
+                        <label for="target" class="form-label">Host / IP</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-hdd-network"></i></span>
                             <input type="text" class="form-control form-control-lg" id="target" name="target"
-                                   placeholder="example.com atau 192.168.1.1" required
-                                   value="{{ request.form.get('target', target) }}">
+                                   placeholder="scanme.nmap.org" required
+                                   value="{{ request.form.get('target', params.get('target', '')) }}">
                         </div>
-                        <div class="form-text text-secondary">Domain atau alamat IP</div>
                     </div>
-                    <button type="submit" class="btn btn-danger w-100">
-                        <i class="bi bi-search"></i> Mulai Scan
-                    </button>
+                    <div class="mb-3">
+                        <label for="ports" class="form-label">Port</label>
+                        <input type="text" class="form-control" id="ports" name="ports"
+                               value="{{ params.get('ports', 'top') }}" placeholder="top | 22,80,443 | 1-1024">
+                        <small class="text-secondary"><code>top</code> = 52 port umum. Maks 5000 port.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="engine" class="form-label">Engine</label>
+                        <select class="form-select" id="engine" name="engine">
+                            <option value="auto">Otomatis</option>
+                            <option value="nmap" {% if not nmap_available %}disabled{% endif %}>nmap -sV</option>
+                            <option value="connect">TCP connect</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100"><i class="bi bi-play-fill"></i> Mulai Scan</button>
                 </form>
-            </div>
-        </div>
-        <div class="card border-secondary mt-3">
-            <div class="card-body">
-                <h6><i class="bi bi-info-circle"></i> Port yang di-scan</h6>
-                <small class="text-secondary">
-                    FTP(21) SSH(22) Telnet(23) SMTP(25) DNS(53) HTTP(80) POP3(110) IMAP(143) HTTPS(443) SMB(445)
-                    IMAPS(993) MSSQL(1433) MySQL(3306) RDP(3389) PostgreSQL(5432) VNC(5900) Redis(6379)
-                    HTTP-Alt(8080) HTTPS-Alt(8443) MongoDB(27017)
-                </small>
             </div>
         </div>
     </div>
 
-    <div class="col-md-7">
+    <div class="col-lg-8">
         {% if error %}
         <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
         {% endif %}
-        {% if results is not none %}
-        <div class="card border-danger">
-            <div class="card-header bg-danger text-white"><i class="bi bi-list-check"></i> Hasil Scan — {{ target }}</div>
-            <div class="card-body">
-                {% if results %}
-                <table class="table table-dark table-striped table-hover mb-0">
-                    <thead>
-                        <tr><th>Port</th><th>Service</th><th>Status</th><th>Banner</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for r in results %}
-                        <tr>
-                            <td><code>{{ r.port }}</code></td>
-                            <td>{{ r.service }}</td>
-                            <td><span class="badge bg-success">Open</span></td>
-                            <td><small class="text-secondary">{{ r.banner[:80] if r.banner else '-' }}</small></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <p class="text-secondary mb-0">Tidak ada port terbuka yang ditemukan pada host ini.</p>
-                {% endif %}
-            </div>
+        {{ job_progress(job) }}
+        {% if results %}
+        {{ result_data(results) }}
+        <div class="row g-2 mb-3 text-center">
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0">{{ results.open|length }}</h4><small>Port terbuka</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0">{{ results.ports_scanned }}</h4><small>Port dicek</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0">{{ risk_badge(results.overall_risk) }}</h4><small>Risiko tertinggi</small></div></div></div>
+            <div class="col"><div class="card border-secondary"><div class="card-body py-2"><h4 class="mb-0 small">{{ results.engine }}</h4><small>Engine</small></div></div></div>
         </div>
+        {% call result_card('Hasil — ' ~ results.host ~ ' (' ~ results.ip ~ ')', 'bi-list-check', 'danger', 'portscan-' ~ results.host, 'open') %}
+        {% if results.open %}
+        <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover align-middle mb-0">
+            <thead><tr><th>Port</th><th>Service</th><th>Versi / Banner</th><th>Risiko</th></tr></thead>
+            <tbody>
+            {% for r in results.open %}
+            <tr>
+                <td><code>{{ r.port }}/{{ r.protocol }}</code></td>
+                <td>{{ r.service or '-' }}</td>
+                <td><small>{{ r.product or (r.banner[:80] if r.banner else '-') }}{% if r.extra %} <span class="text-secondary">({{ r.extra }})</span>{% endif %}</small>
+                    {% if r.cpe %}<br><small class="text-secondary">{{ r.cpe|join(', ') }}</small>{% endif %}</td>
+                <td>{{ risk_badge(r.risk) }}<br><small class="text-secondary">{{ r.risk_reason }}</small></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p class="text-secondary mb-0">Tidak ada port terbuka yang ditemukan pada host ini.</p>
+        {% endif %}
+        {% endcall %}
         {% endif %}
     </div>
 </div>

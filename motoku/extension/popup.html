@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { width: 320px; font: 13px system-ui, sans-serif; background: #0a0e0a; color: #ddd; margin: 0; padding: 12px; }
+  h1 { font-size: 15px; margin: 0 0 8px; color: #00ff88; }
+  input, select, button { width: 100%; box-sizing: border-box; margin: 4px 0; padding: 6px; border-radius: 6px; border: 1px solid #2a3a2a; background: #111811; color: #eee; }
+  button { background: #00cc6a; color: #031; font-weight: 600; cursor: pointer; border: 0; }
+  button.secondary { background: #1b2a1b; color: #ccc; }
+  .muted { color: #888; font-size: 11px; } #status { margin-top: 6px; font-size: 12px; word-break: break-word; }
+  a { color: #00ff88; }
+</style>
+</head>
+<body>
+  <h1>Motoku OSINT</h1>
+  <form id="search-form"><input id="q" placeholder="Email, domain, IP, username, …" autofocus><button type="submit">Cari</button></form>
+  <hr style="border-color:#1a2a1a">
+  <div class="muted">Halaman aktif: <span id="page-host">-</span></div>
+  <select id="case-select" aria-label="Case"><option value="">Memuat case…</option></select>
+  <button id="add-page" class="secondary">Tambah URL halaman ke case</button>
+  <button id="run-intel" class="secondary">Cek reputasi domain halaman</button>
+  <div id="status"></div>
+  <p class="muted"><a href="#" id="open-options">Pengaturan server &amp; token</a></p>
+  <script src="common.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,197 +1,42 @@
 {% extends "base.html" %}
-{% block title %}Home{% endblock %}
+{% block title %}{{ _('Beranda') }}{% endblock %}
 {% block content %}
-<div class="text-center mb-5">
-    <h1 class="display-4 fw-bold">
-        <i class="bi bi-radioactive text-success"></i> Motoku
-    </h1>
-    <p class="lead text-secondary">
-        OSINT Information Gathering Toolkit — 15 tools dalam satu web app
-    </p>
+<div class="text-center mb-4">
+    <h1 class="display-4 fw-bold"><i class="bi bi-radioactive text-success"></i> Motoku</h1>
+    <p class="lead text-secondary">{{ _('OSINT Information Gathering Toolkit — {n} modul dalam satu web app', n=tool_catalog.count()) }}</p>
     <hr class="border-success w-25 mx-auto">
+    <form class="hero-search mx-auto mt-4" style="max-width: 640px" action="{{ url_for('unified_search') }}"
+          method="GET" data-unified-search>
+        <div class="input-group input-group-lg">
+            <span class="input-group-text bg-transparent border-success"><i class="bi bi-search text-success"></i></span>
+            <input class="form-control" type="search" name="q" autofocus autocomplete="off" required aria-label="{{ _('Cari') }}"
+                   placeholder="{{ _('Masukkan email, domain, URL, IP, username, nomor, atau nama') }}">
+            <button class="btn btn-success" type="submit">{{ _('Cari') }}</button>
+        </div>
+        <div class="detected-type text-secondary text-start mt-1 ps-1"></div>
+        <div class="small text-secondary mt-1">{{ _('Tekan') }} <kbd>Ctrl</kbd>+<kbd>K</kbd> {{ _('untuk membuka command palette') }}</div>
+    </form>
 </div>
 
-<div class="row g-4">
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('phone') }}" class="text-decoration-none">
-            <div class="card card-hover border-success h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-telephone-fill text-success" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Phone Tracker</h5>
-                    <p class="card-text text-secondary small">Operator, lokasi, timezone, validitas nomor HP</p>
+{% for key, cat_label, items in tool_catalog.grouped() %}
+{% set visible = items|rejectattr('endpoint', 'in', ['job_list', 'status', 'settings.tokens', 'api_v1.docs', 'welcome', 'providers_dashboard'])|list %}
+{% if visible %}
+<h2 class="home-section-title mt-4 mb-2">{{ _(cat_label) }}</h2>
+<div class="row g-3">
+    {% for t in visible %}
+    <div class="{% if key == 'workflow' %}col-md-6 col-xl-4{% else %}col-sm-6 col-lg-4 col-xl-3{% endif %}">
+        <a href="{{ url_for(t.endpoint) }}" class="text-decoration-none">
+            <div class="card card-hover tool-card border-{{ t.color }} h-100">
+                <div class="card-body d-flex gap-3 align-items-start">
+                    <i class="bi {{ t.icon }} text-{{ t.color }} tool-icon"></i>
+                    <div><h3 class="h6 card-title mb-1 text-light">{{ _(t.label) }}</h3>
+                        <p class="card-text text-secondary small mb-0">{{ _(t.desc) }}</p></div>
                 </div>
             </div>
         </a>
     </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('ip_track') }}" class="text-decoration-none">
-            <div class="card card-hover border-info h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-globe2 text-info" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">IP Tracker</h5>
-                    <p class="card-text text-secondary small">Geolokasi, ISP, ASN, Google Maps, deteksi IP sendiri</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('username') }}" class="text-decoration-none">
-            <div class="card card-hover border-warning h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-person-badge-fill text-warning" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Username Tracker</h5>
-                    <p class="card-text text-secondary small">Cek 22 platform sosial media (IG, FB, TikTok, GitHub, dll)</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('username_deep') }}" class="text-decoration-none">
-            <div class="card card-hover border-danger h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-person-fill-gear text-danger" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Deep Username</h5>
-                    <p class="card-text text-secondary small">Analisa username di 400+ platform (Sherlock) + Instagram (Instaloader)</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('email') }}" class="text-decoration-none">
-            <div class="card card-hover border-danger h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-envelope-fill text-danger" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Email OSINT</h5>
-                    <p class="card-text text-secondary small">Reputasi email, breach detection, profil Gravatar</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('domain') }}" class="text-decoration-none">
-            <div class="card card-hover border-primary h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-building text-primary" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Domain WHOIS</h5>
-                    <p class="card-text text-secondary small">Registrar, tanggal kadaluarsa, name server, IP domain</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('subdomain') }}" class="text-decoration-none">
-            <div class="card card-hover border-warning h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-diagram-3-fill text-warning" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Subdomain Enum</h5>
-                    <p class="card-text text-secondary small">Enum subdomain via crt.sh + DNS brute force + peta visual interaktif</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('dns') }}" class="text-decoration-none">
-            <div class="card card-hover h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-diagram-3 text-secondary" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">DNS Lookup</h5>
-                    <p class="card-text text-secondary small">A, AAAA, MX, NS, TXT, CNAME, SOA, SPF, CAA, SRV</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('portscan') }}" class="text-decoration-none">
-            <div class="card card-hover border-danger h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-plug-fill text-danger" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Port Scanner</h5>
-                    <p class="card-text text-secondary small">Scan 23 port umum, deteksi service + banner grabbing</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('tech') }}" class="text-decoration-none">
-            <div class="card card-hover border-info h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-cpu text-info" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Tech Stack</h5>
-                    <p class="card-text text-secondary small">Deteksi CMS, framework, library, server web</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('search_person') }}" class="text-decoration-none">
-            <div class="card card-hover border-info h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-person-search text-info" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Search Person</h5>
-                    <p class="card-text text-secondary small">Cari nama seseorang di 8 search engine (Google, Bing, DuckDuckGo, dll)</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('dorks') }}" class="text-decoration-none">
-            <div class="card card-hover border-success h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-shield-shaded text-success" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Google Dorks</h5>
-                    <p class="card-text text-secondary small">Generate 30+ Google dork queries untuk target domain</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('location_tracker') }}" class="text-decoration-none">
-            <div class="card card-hover border-danger h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-geo-alt-fill text-danger" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Location Tracker</h5>
-                    <p class="card-text text-secondary small">Buat link pelacak lokasi via GPS, share ke target, dan lihat hasilnya</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('cctv') }}" class="text-decoration-none">
-            <div class="card card-hover border-info h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-camera-video-fill text-info" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">CCTV Finder</h5>
-                    <p class="card-text text-secondary small">Jelajahi CCTV publik Indonesia & scan IP untuk camera terbuka</p>
-                </div>
-            </div>
-        </a>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <a href="{{ url_for('flight_radar') }}" class="text-decoration-none">
-            <div class="card card-hover border-primary h-100">
-                <div class="card-body text-center p-4">
-                    <i class="bi bi-airplane-engines text-primary" style="font-size: 2.5rem;"></i>
-                    <h5 class="card-title mt-2">Flight Radar</h5>
-                    <p class="card-text text-secondary small">Pemantauan pesawat real-time via OpenSky Network — peta live, filter, statistik</p>
-                </div>
-            </div>
-        </a>
-    </div>
+    {% endfor %}
 </div>
-
-
+{% endif %}
+{% endfor %}
 {% endblock %}

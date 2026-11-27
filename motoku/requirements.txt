@@ -1,6 +1,27 @@
-flask>=3.0
-requests>=2.31
+flask>=3.0,<4
+requests>=2.31,<3
 phonenumbers>=8.13
 python-whois>=0.9
-python-Wappalyzer>=0.3
+python-Wappalyzer>=0.3,<1
 dnspython>=2.0
+beautifulsoup4>=4.12
+lxml>=5.0
+gunicorn>=21.2
+cryptography>=42
+
+# Shared cache/quota store and background job queue (used when MOTOKU_REDIS_URL is set)
+redis>=5.0,<6
+rq>=2.0,<3
+
+# Favicon hashing (Shodan-compatible)
+mmh3>=4.0
+
+# Image forensics (EXIF, perceptual hash)
+Pillow>=10.0
+
+# Optional: install playwright for screenshots via Playwright instead of the
+# Chromium CLI (pip install playwright).
+
+# Deep username module (optional at runtime, installed by default here)
+sherlock-project>=0.15
+instaloader>=4.10
