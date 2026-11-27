@@ -1,8 +1,8 @@
 {# Shared UI building blocks for result pages. #}
 
 {# Embed result data as JSON for the copy/export toolbar. #}
-{% macro result_data(data, id='result-data') -%}
-<script type="application/json" id="{{ id }}">{{ data|tojson }}</script>
+{% macro result_data(data, id='result-data', tool=None) -%}
+<script type="application/json" id="{{ id }}" data-tool="{{ tool or request.endpoint }}">{{ data|tojson }}</script>
 {%- endmacro %}
 
 {# Toolbar: copy JSON, export JSON, export CSV.
@@ -17,6 +17,9 @@
     </button>
     <button type="button" class="btn btn-outline-light" data-export="csv" data-source="{{ id }}" data-filename="{{ filename }}" data-rows="{{ rows }}" title="Unduh CSV">
         <i class="bi bi-filetype-csv"></i><span class="d-none d-md-inline"> CSV</span>
+    </button>
+    <button type="button" class="btn btn-outline-success" data-save-case="{{ id }}" data-label="{{ filename }}" title="Simpan hasil ke case">
+        <i class="bi bi-folder-plus"></i><span class="d-none d-md-inline"> Case</span>
     </button>
 </div>
 {%- endmacro %}

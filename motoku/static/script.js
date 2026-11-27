@@ -241,3 +241,64 @@ document.addEventListener('DOMContentLoaded', function () {
         source.addEventListener('gone', () => source.close());
     });
 });
+
+
+/* ── Save any tool result into a case ── */
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('save-case-modal');
+    if (!modalEl || !window.bootstrap) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const select = document.getElementById('save-case-select');
+    const newBox = document.getElementById('save-case-new');
+    const titleInput = document.getElementById('save-case-title-input');
+    const status = document.getElementById('save-case-status');
+    const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
+    let pending = null;
+
+    select.addEventListener('change', () => { newBox.hidden = select.value !== '__new__'; });
+
+    document.addEventListener('click', event => {
+        const btn = event.target.closest('[data-save-case]');
+        if (!btn) return;
+        const source = document.getElementById(btn.dataset.saveCase);
+        if (!source) return;
+        pending = {tool: source.dataset.tool || 'generic', data: JSON.parse(source.textContent), label: btn.dataset.label || ''};
+        status.textContent = '';
+        titleInput.value = pending.label;
+        fetch('/cases.json').then(r => r.json()).then(cases => {
+            select.innerHTML = '';
+            cases.forEach(c => select.add(new Option(c.title + ' (' + c.id + ')', c.id)));
+            select.add(new Option('+ Buat case baru…', '__new__'));
+            if (!cases.length) select.value = '__new__';
+            newBox.hidden = select.value !== '__new__';
+            modal.show();
+        });
+    });
+
+    document.getElementById('save-case-submit').addEventListener('click', async () => {
+        if (!pending) return;
+        status.textContent = 'Menyimpan…';
+        try {
+            let caseId = select.value;
+            if (caseId === '__new__') {
+                const body = new URLSearchParams({title: titleInput.value || pending.label || 'Case baru', csrf_token: csrf()});
+                const created = await fetch('/cases', {method: 'POST', body: body, redirect: 'follow'});
+                caseId = created.url.split('/cases/')[1];
+                if (!caseId) throw new Error('Gagal membuat case');
+            }
+            const resp = await fetch('/cases/' + caseId + '/import', {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf()},
+                body: JSON.stringify(pending),
+            });
+            const out = await resp.json();
+            if (!resp.ok) throw new Error(out.error || resp.status);
+            status.innerHTML = '';
+            const link = document.createElement('a');
+            link.href = out.url; link.className = 'text-success';
+            link.textContent = `Tersimpan: ${out.entities_new} entity baru, ${out.relations} relasi, ${out.findings} temuan → buka case`;
+            status.appendChild(link);
+        } catch (e) {
+            status.textContent = 'Gagal: ' + e.message;
+        }
+    });
+});

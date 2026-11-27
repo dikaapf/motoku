@@ -99,6 +99,9 @@ app.py               Flask routes and app configuration
 config.py            Environment-based configuration
 db.py                SQLite persistence + legacy JSON migration
 rate_limit.py        In-memory sliding-window rate limiter
+cli.py               Command-line client for the REST API (+ local watch-run)
+extension/           Browser extension (Manifest V3, Chrome/Edge/Brave/Firefox)
+routes/              Blueprints: cases, watchlist, settings, REST API v1
 services/
   cache.py           Redis / in-memory TTL cache
   detect.py          Input-type detection for the unified search bar
@@ -106,6 +109,11 @@ services/
   jobs.py            Background job queue (thread / RQ), state in SQLite
   job_handlers.py    Job registrations (recon, subdomain, portscan, username)
   recon.py           One-click domain recon pipeline
+  casedb.py          Cases, entities, relations, findings, notes, attachments, custody
+  importer.py        Tool result → entities/relations/findings (case auto-fill)
+  report.py          Markdown / JSON / CSV-zip / HTML / PDF reports
+  watch.py           Watchlist checks, diff → alerts, webhook/email, scheduler
+  api_tokens.py      Hashed REST API tokens with scopes
   resolver.py        DNS resolver with DNS-over-HTTPS fallback
   providers/         Provider abstraction (cache, quota, API keys) + registry
 tools/               One module per OSINT capability
@@ -255,3 +263,34 @@ Only scan assets you own or are authorised to test.
   with per-platform pivots and a same-name ≠ same-person warning.
 - **Unified search** now recognises coordinates, image URLs and LEI codes, and
   routes usernames to social profiles and names to corporate/academic search.
+
+## S5 — Case management & reporting
+
+- **Cases** (`/cases`): case → entities (typed, de-duplicated) → relations →
+  findings (severity + status), notes, attachments, tags and a timeline.
+- **Auto-fill**: every tool result has a **Case** button that extracts entities,
+  relations and findings into a case (per-tool extractors + a generic fallback).
+  Finished jobs can be imported too, and `/recon` can write straight into a new
+  or existing case.
+- **Entity graph & timeline**: vis-network graph (low-priority CVEs folded) and
+  vis-timeline of every case event.
+- **Chain of custody**: append-only SHA-256 hash chain over every change,
+  attachment access and report export; `/cases/<id>/custody` verifies it.
+  Attachments are stored by SHA-256 and re-verified on download.
+- **Reports**: Markdown, JSON, CSV zip (entities/findings/relations/timeline/
+  custody), printable HTML and PDF (headless Chromium). Each export is hashed
+  and logged.
+- **Watchlist & alerts** (`/watchlist`): domain (DNS, TLS, new subdomains,
+  reputation, new typosquats), IP (ports & CVEs), email (breaches), username
+  (profiles). First run = baseline; later diffs become alerts (and case
+  findings), delivered to Slack/Discord/JSON webhooks or SMTP email. A scheduler
+  thread runs due checks (single runner via DB lease); `python cli.py watch-run`
+  works from cron instead.
+- **REST API v1** (`/api/v1`, docs at `/api/v1/docs`): bearer tokens with
+  `read`/`write`/`scan` scopes, managed at `/settings/tokens` (only hashes are
+  stored). Tools, jobs, cases, import, reports, watchlist, alerts.
+- **CLI** (`cli.py`): `detect`, `tool`, `recon --wait`, `job`, `case …`,
+  `watch …`, `alerts`.
+- **Browser extension** (`extension/`): context menu (selection/link/image/page
+  → Motoku), popup search, add current page to a case, reputation check. Load it
+  unpacked from `chrome://extensions` and set server URL + token in Options.

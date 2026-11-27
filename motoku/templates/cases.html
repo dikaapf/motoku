@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Cases{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h2 class="mb-0"><i class="bi bi-folder2-open text-success"></i> Cases</h2>
+    <div class="btn-group btn-group-sm">
+        <a class="btn btn-outline-secondary {% if not status %}active{% endif %}" href="{{ url_for('cases.index') }}">Semua</a>
+        {% for s in ['open', 'closed', 'archived'] %}<a class="btn btn-outline-secondary {% if status == s %}active{% endif %}" href="{{ url_for('cases.index', status=s) }}">{{ s }}</a>{% endfor %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-4 mb-3">
+        <div class="card border-success"><div class="card-body">
+            <h6><i class="bi bi-plus-circle"></i> Case baru</h6>
+            {% if error %}<div class="alert alert-danger py-1 small">{{ error }}</div>{% endif %}
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input class="form-control mb-2" name="title" placeholder="Judul investigasi" required maxlength="200">
+                <textarea class="form-control mb-2" name="description" rows="3" placeholder="Ruang lingkup, dasar hukum / izin, tujuan"></textarea>
+                <input class="form-control mb-3" name="tags" placeholder="tag, dipisah koma">
+                <button class="btn btn-success w-100" type="submit">Buat case</button>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-8">
+        <div class="list-group">
+        {% for c in cases %}
+            <a href="{{ url_for('cases.detail', case_id=c.id) }}" class="list-group-item list-group-item-action bg-transparent">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div><strong>{{ c.title }}</strong> <small class="text-secondary"><code>{{ c.id }}</code></small>
+                        {% for t in c.tags %}<span class="badge bg-dark border border-secondary ms-1">{{ t }}</span>{% endfor %}
+                        <div class="small text-secondary">{{ (c.description or '')[:140] }}</div></div>
+                    <div class="text-end small text-nowrap">
+                        <span class="badge bg-{{ 'success' if c.status == 'open' else 'secondary' }}">{{ c.status }}</span><br>
+                        {{ c.entity_count }} entity · <span class="{% if c.open_findings %}text-warning{% endif %}">{{ c.open_findings }} temuan</span><br>
+                        <span class="text-secondary">{{ c.updated_at }}</span>
+                    </div>
+                </div>
+            </a>
+        {% else %}<div class="text-secondary p-3">Belum ada case. Buat case, lalu simpan hasil tool ke dalamnya lewat tombol <i class="bi bi-folder-plus"></i> Case di setiap hasil.</div>{% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

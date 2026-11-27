@@ -64,6 +64,138 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_jobs_kind_created ON jobs(kind, created_at);
 
+-- ── S5: case management ──
+CREATE TABLE IF NOT EXISTS cases (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    tags_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS entities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    value TEXT NOT NULL,
+    label TEXT,
+    data_json TEXT,
+    sources_json TEXT,
+    tags_json TEXT,
+    first_seen TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    UNIQUE (case_id, type, value)
+);
+CREATE INDEX IF NOT EXISTS idx_entities_case ON entities(case_id, type);
+CREATE TABLE IF NOT EXISTS relations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    src_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    dst_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    source TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (case_id, src_id, dst_id, kind)
+);
+CREATE TABLE IF NOT EXISTS findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL,
+    severity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT,
+    source TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    fingerprint TEXT,
+    created_at TEXT NOT NULL,
+    UNIQUE (case_id, fingerprint)
+);
+CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    entity_id INTEGER REFERENCES entities(id) ON DELETE SET NULL,
+    body TEXT NOT NULL,
+    author TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    mime TEXT,
+    note TEXT,
+    author TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    ts TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    data_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_events_case ON events(case_id, ts);
+CREATE TABLE IF NOT EXISTS custody (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT NOT NULL,
+    ts TEXT NOT NULL,
+    actor TEXT,
+    action TEXT NOT NULL,
+    object_type TEXT,
+    object_id TEXT,
+    digest TEXT,
+    prev_hash TEXT,
+    hash TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_custody_case ON custody(case_id, id);
+CREATE TABLE IF NOT EXISTS watchlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id TEXT REFERENCES cases(id) ON DELETE SET NULL,
+    type TEXT NOT NULL,
+    target TEXT NOT NULL,
+    label TEXT,
+    checks_json TEXT,
+    notify_json TEXT,
+    interval_min INTEGER NOT NULL DEFAULT 1440,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_run TEXT,
+    next_run TEXT,
+    last_status TEXT,
+    snapshot_json TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    watch_id INTEGER REFERENCES watchlist(id) ON DELETE CASCADE,
+    case_id TEXT,
+    ts TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT,
+    data_json TEXT,
+    delivery_json TEXT,
+    acknowledged INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    prefix TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    scopes TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    last_used TEXT,
+    revoked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS leases (
+    name TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,
+    expires REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS provider_daily (
     provider TEXT NOT NULL,
     day TEXT NOT NULL,

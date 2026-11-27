@@ -65,6 +65,16 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db.configure(app.config['DB_PATH'])
 
+from routes import api as api_routes  # noqa: E402
+from routes import cases as case_routes  # noqa: E402
+from routes import settings as settings_routes  # noqa: E402
+from routes import watch as watch_routes  # noqa: E402
+
+app.register_blueprint(case_routes.bp)
+app.register_blueprint(watch_routes.bp)
+app.register_blueprint(settings_routes.bp)
+app.register_blueprint(api_routes.bp)
+
 # Endpoints that cannot carry a session CSRF token (public tracking beacon).
 CSRF_EXEMPT_ENDPOINTS = {'receive_location'}
 
@@ -128,7 +138,23 @@ def enforce_rate_limit():
 def require_auth():
     if request.path.startswith('/static/'):
         return None
+    if request.path.startswith('/api/v1'):
+        return None  # REST API authenticates with its own bearer tokens
     return _check_basic_auth()
+
+
+_scheduler_started = False
+
+
+@app.before_request
+def start_background_scheduler():
+    global _scheduler_started
+    if _scheduler_started or app.testing or not app.config.get('SCHEDULER_ENABLED', True):
+        return None
+    _scheduler_started = True
+    from services import watch
+    watch.start_scheduler()
+    return None
 
 
 @app.before_request
@@ -139,6 +165,8 @@ def csrf_protect():
         return None
     if request.endpoint in CSRF_EXEMPT_ENDPOINTS:
         return None
+    if request.blueprint == 'api_v1':
+        return None  # token-authenticated, not cookie-based
 
     expected = session.get('_csrf_token')
     supplied = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
@@ -476,9 +504,21 @@ def recon():
         else:
             options = {key: request.form.get(key) == '1'
                        for key in ('ports', 'screenshots', 'archive', 'intel', 'typosquat', 'cloud')}
-            job_id = jobs.enqueue('recon', domain_val, {'domain': domain_val, 'options': options})
+            params = {'domain': domain_val, 'options': options}
+            case_choice = request.form.get('case_id', '').strip()
+            if case_choice == '__new__':
+                from routes import current_actor
+                from services import casedb
+                case_choice = casedb.create_case(f'Recon {domain_val}', f'Recon otomatis untuk {domain_val}',
+                                                 ['recon'], current_actor())
+            if case_choice:
+                from routes import current_actor
+                params.update(case_id=case_choice, actor=current_actor())
+            job_id = jobs.enqueue('recon', domain_val, params)
             return redirect(url_for('recon_report', job_id=job_id))
+    from services import casedb
     return render_template('recon.html', error=error, recent=db.list_jobs('recon', 15),
+                           cases=casedb.list_cases('open'), selected_case=request.args.get('case', ''),
                            screenshot_backend=http_probe.screenshot_backend(),
                            nmap_available=portscan_tool.nmap_available())
 

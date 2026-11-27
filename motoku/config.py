@@ -36,6 +36,9 @@ class Config:
     # CSRF protection on state-changing requests.
     CSRF_ENABLED = _env_bool('MOTOKU_CSRF_ENABLED', True)
 
+    # Watchlist scheduler thread (one process wins a DB lease).
+    SCHEDULER_ENABLED = _env_bool('MOTOKU_SCHEDULER', True)
+
     # Global per-client rate limiting.
     RATE_LIMIT_ENABLED = _env_bool('MOTOKU_RATE_LIMIT_ENABLED', True)
     RATE_LIMIT_REQUESTS = int(os.environ.get('MOTOKU_RATE_LIMIT_REQUESTS', '120'))

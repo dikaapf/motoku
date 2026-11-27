@@ -17,6 +17,10 @@
 
 {% if report %}
 {{ result_data(report) }}
+{% if report.case_import %}
+<div class="alert alert-success py-2 small"><i class="bi bi-folder-check"></i> Hasil sudah diimpor ke <a class="text-success fw-bold" href="{{ url_for('cases.detail', case_id=job.params.case_id) }}">case {{ job.params.case_id }}</a>:
+    {{ report.case_import.entities_new }} entity baru, {{ report.case_import.relations }} relasi, {{ report.case_import.findings }} temuan.</div>
+{% endif %}
 {% set s = report.summary %}
 <div class="d-flex justify-content-end mb-2">
     {% from "_macros.html" import export_toolbar %}{{ export_toolbar('recon-' ~ report.domain, 'summary.findings') }}

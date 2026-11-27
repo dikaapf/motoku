@@ -33,7 +33,9 @@
                     </div>
                 </form>
                 <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('cases.index') }}"><i class="bi bi-folder2-open text-success"></i> Cases</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('recon') }}"><i class="bi bi-radar text-success"></i> Recon</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('watch.index') }}"><i class="bi bi-binoculars"></i> Watch</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('job_list') }}"><i class="bi bi-list-task"></i> Jobs</a></li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -75,6 +77,8 @@
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('status') }}"><i class="bi bi-activity text-success"></i> Status</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('providers_dashboard') }}"><i class="bi bi-speedometer2 text-success"></i> Provider &amp; Kuota</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('settings.tokens') }}"><i class="bi bi-key-fill text-warning"></i> API Token</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('api_v1.docs') }}"><i class="bi bi-braces text-info"></i> Dokumentasi API</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -96,6 +100,21 @@
             </small>
         </div>
     </footer>
+
+    <div class="modal fade" id="save-case-modal" tabindex="-1" aria-labelledby="save-case-title" aria-hidden="true">
+        <div class="modal-dialog"><div class="modal-content bg-dark border-success">
+            <div class="modal-header"><h5 class="modal-title" id="save-case-title"><i class="bi bi-folder-plus text-success"></i> Simpan ke case</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+            <div class="modal-body">
+                <label class="form-label small" for="save-case-select">Case tujuan</label>
+                <select class="form-select mb-2" id="save-case-select"></select>
+                <div id="save-case-new" hidden><input class="form-control mb-2" id="save-case-title-input" placeholder="Judul case baru"></div>
+                <small class="text-secondary">Entity, relasi, dan temuan diekstrak otomatis dari hasil ini dan dicatat di chain of custody.</small>
+                <div class="small mt-2" id="save-case-status"></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-success" id="save-case-submit">Simpan</button></div>
+        </div></div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>

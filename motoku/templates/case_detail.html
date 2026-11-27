@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% from "_macros.html" import risk_badge, copy_btn %}
+{% block title %}{{ case.title }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.css">
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-folder2-open text-success"></i> {{ case.title }}</h2>
+        <small class="text-secondary"><code>{{ case.id }}</code>{{ copy_btn(case.id) }} · dibuat {{ case.created_at }} · diperbarui {{ case.updated_at }}</small>
+        <div>{% for t in case.tags %}<span class="badge bg-dark border border-secondary me-1">{{ t }}</span>{% endfor %}
+            <span class="badge bg-{{ 'success' if case.status == 'open' else 'secondary' }}">{{ case.status }}</span>
+            <span class="badge bg-{{ 'success' if custody.valid else 'danger' }}" title="Chain of custody"><i class="bi bi-link-45deg"></i> custody {{ 'valid' if custody.valid else 'RUSAK' }} ({{ custody.count }})</span></div>
+    </div>
+    <div class="btn-group btn-group-sm flex-wrap">
+        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='html', view=1) }}" target="_blank"><i class="bi bi-eye"></i> Lihat laporan</a>
+        <a class="btn btn-outline-light {% if not pdf_available %}disabled{% endif %}" href="{{ url_for('cases.export', case_id=case.id, fmt='pdf') }}"><i class="bi bi-filetype-pdf"></i> PDF</a>
+        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='md') }}"><i class="bi bi-markdown"></i> MD</a>
+        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='json') }}"><i class="bi bi-filetype-json"></i> JSON</a>
+        <a class="btn btn-outline-light" href="{{ url_for('cases.export', case_id=case.id, fmt='zip') }}"><i class="bi bi-file-zip"></i> CSV</a>
+    </div>
+</div>
+{% with messages = get_flashed_messages() %}{% for m in messages %}<div class="alert alert-warning py-1 small">{{ m }}</div>{% endfor %}{% endwith %}
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    {% for key, label, n in [('overview', 'Ringkasan', None), ('graph', 'Graf', entities|length), ('timeline', 'Timeline', events|length), ('entities', 'Entity', entities|length), ('findings', 'Temuan', findings|selectattr('status', 'in', ['open', 'confirmed'])|list|length), ('notes', 'Catatan', notes|length), ('attachments', 'Lampiran', attachments|length), ('watch', 'Watchlist', watches|length), ('settings', 'Pengaturan', None)] %}
+    <li class="nav-item" role="presentation"><button class="nav-link {% if tab == key %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#tab-{{ key }}" type="button" role="tab" data-tab="{{ key }}">{{ label }}{% if n is not none %} <span class="badge bg-secondary">{{ n }}</span>{% endif %}</button></li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane fade {% if tab == 'overview' %}show active{% endif %}" id="tab-overview" role="tabpanel">
+    <div class="row g-3">
+        <div class="col-lg-7">
+            {% if case.description %}<div class="card border-secondary mb-3"><div class="card-body small" style="white-space: pre-wrap">{{ case.description }}</div></div>{% endif %}
+            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-exclamation-diamond"></i> Temuan terbuka teratas</div>
+                <ul class="list-group list-group-flush">
+                {% for f in findings if f.status in ('open', 'confirmed') %}{% if loop.index <= 10 %}
+                    <li class="list-group-item bg-transparent sev-{{ f.severity }}">{{ risk_badge(f.severity) }} {{ f.title }}<br><small class="text-secondary">{{ (f.detail or '')[:160] }}</small></li>
+                {% endif %}{% else %}<li class="list-group-item bg-transparent text-secondary">Belum ada temuan.</li>{% endfor %}
+                </ul></div>
+            {% if alerts %}<div class="card border-warning"><div class="card-header"><i class="bi bi-bell"></i> Alert watchlist</div>
+                <ul class="list-group list-group-flush">{% for a in alerts[:8] %}<li class="list-group-item bg-transparent small">{{ risk_badge(a.severity) }} {{ a.title }} <span class="text-secondary">{{ a.ts }}</span></li>{% endfor %}</ul></div>{% endif %}
+        </div>
+        <div class="col-lg-5">
+            <div class="card border-secondary mb-3"><div class="card-header"><i class="bi bi-pie-chart"></i> Entity per tipe</div><div class="card-body">
+                {% for t, n in counts.items() %}<span class="badge bg-dark border border-secondary me-1 mb-1">{{ t }} · {{ n }}</span>{% else %}<span class="text-secondary small">Kosong</span>{% endfor %}
+            </div></div>
+            <div class="card border-info mb-3"><div class="card-header"><i class="bi bi-cloud-download"></i> Isi otomatis dari job</div><div class="card-body">
+                <form method="POST" action="{{ url_for('cases.import_result', case_id=case.id) }}" class="d-flex gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="job_id" class="form-select form-select-sm" required>
+                        {% for j in recent_jobs %}<option value="{{ j.id }}">{{ j.kind }} · {{ j.target }} · {{ j.finished_at }}</option>{% else %}<option value="" disabled selected>Belum ada job selesai</option>{% endfor %}
+                    </select>
+                    <button class="btn btn-sm btn-info" type="submit">Import</button>
+                </form>
+                <small class="text-secondary d-block mt-2">Atau jalankan <a class="text-info" href="{{ url_for('recon', case=case.id) }}">recon lengkap</a> langsung ke case ini, atau pakai tombol <i class="bi bi-folder-plus"></i> Case di hasil tool mana pun.</small>
+            </div></div>
+        </div>
+    </div>
+</div>
+
+<div class="tab-pane fade {% if tab == 'graph' %}show active{% endif %}" id="tab-graph" role="tabpanel">
+    <div class="card border-secondary"><div class="card-body p-0">
+        <div id="case-graph" style="height: 600px; background:#0a0e0a; border-radius: 10px;"></div>
+    </div></div>
+    <small class="text-secondary">Klik node untuk detail; scroll untuk zoom. Warna mengikuti tipe entity.</small>
+    <div id="graph-detail" class="small mt-2"></div>
+</div>
+
+<div class="tab-pane fade {% if tab == 'timeline' %}show active{% endif %}" id="tab-timeline" role="tabpanel">
+    <div id="case-timeline" class="mb-3" style="background:#f8f9fa; border-radius: 8px;"></div>
+    <div class="list-group list-group-flush small" style="max-height: 420px; overflow-y: auto">
+    {% for e in events %}<div class="list-group-item bg-transparent"><span class="text-secondary">{{ e.ts }}</span> <span class="badge bg-dark border border-secondary">{{ e.kind }}</span> {{ e.summary }}</div>{% endfor %}
+    </div>
+</div>
+
+<div class="tab-pane fade {% if tab == 'entities' %}show active{% endif %}" id="tab-entities" role="tabpanel">
+    <form method="POST" action="{{ url_for('cases.add_entity', case_id=case.id) }}" class="row g-2 mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-2"><select class="form-select form-select-sm" name="type" aria-label="Tipe">{% for t in entity_types %}<option>{{ t }}</option>{% endfor %}</select></div>
+        <div class="col-md-4"><input class="form-control form-control-sm" name="value" placeholder="Nilai" required></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" name="label" placeholder="Label (opsional)"></div>
+        <div class="col-md-2"><input class="form-control form-control-sm" name="tags" placeholder="tag"></div>
+        <div class="col-md-1"><button class="btn btn-sm btn-success w-100">Tambah</button></div>
+    </form>
+    <input class="form-control form-control-sm mb-2" id="entity-filter" placeholder="Filter entity…" aria-label="Filter entity">
+    <div class="table-responsive" style="max-height: 600px"><table class="table table-dark table-sm table-hover align-middle" id="entity-table">
+        <thead><tr><th>Tipe</th><th>Nilai</th><th>Label</th><th>Sumber</th><th>Terakhir</th><th></th></tr></thead>
+        <tbody>{% for e in entities %}
+        <tr><td><span class="badge bg-dark border border-secondary">{{ e.type }}</span></td>
+            <td class="text-break"><code>{{ e.value }}</code>{{ copy_btn(e.value) }}{% for t in e.tags %} <span class="badge bg-warning text-dark">{{ t }}</span>{% endfor %}</td>
+            <td><small>{{ e.label or '' }}</small></td><td><small class="text-secondary">{{ e.sources|join(', ') }}</small></td>
+            <td><small class="text-secondary">{{ e.last_seen }}</small></td>
+            <td class="text-nowrap">
+                {% if e.type in ('domain', 'subdomain', 'ip', 'email', 'username', 'url', 'cve', 'phone', 'hash') %}<a class="btn btn-sm btn-link p-0 text-info" href="{{ url_for('unified_search', q=e.value) }}" title="Pivot"><i class="bi bi-search"></i></a>{% endif %}
+                <form method="POST" action="{{ url_for('cases.delete_entity', case_id=case.id, entity_id=e.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-link p-0 text-danger" title="Hapus"><i class="bi bi-x-circle"></i></button></form>
+            </td></tr>
+        {% endfor %}</tbody>
+    </table></div>
+</div>
+
+<div class="tab-pane fade {% if tab == 'findings' %}show active{% endif %}" id="tab-findings" role="tabpanel">
+    <form method="POST" action="{{ url_for('cases.add_finding', case_id=case.id) }}" class="row g-2 mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-2"><select class="form-select form-select-sm" name="severity" aria-label="Severity">{% for s in ['critical', 'high', 'medium', 'low', 'info'] %}<option {% if s == 'medium' %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+        <div class="col-md-4"><input class="form-control form-control-sm" name="title" placeholder="Judul temuan" required></div>
+        <div class="col-md-5"><input class="form-control form-control-sm" name="detail" placeholder="Detail / bukti"></div>
+        <div class="col-md-1"><button class="btn btn-sm btn-success w-100">Tambah</button></div>
+    </form>
+    <div class="list-group">{% for f in findings %}
+        <div class="list-group-item bg-transparent sev-{{ f.severity }} {% if f.status in ('false_positive', 'resolved') %}opacity-50{% endif %}">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+                <div>{{ risk_badge(f.severity) }} <strong>{{ f.title }}</strong> <small class="text-secondary">#{{ f.id }} · {{ f.source }} · {{ f.created_at }}</small>
+                    {% if f.detail %}<div class="small text-secondary">{{ f.detail }}</div>{% endif %}
+                    {% if f.entity_value %}<div class="small"><span class="badge bg-dark border border-secondary">{{ f.entity_type }}</span> <code>{{ f.entity_value }}</code></div>{% endif %}</div>
+                <form method="POST" action="{{ url_for('cases.finding_status', case_id=case.id, finding_id=f.id) }}" class="d-flex gap-1 align-items-start">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="status" class="form-select form-select-sm" aria-label="Status temuan" onchange="this.form.submit()">
+                        {% for s in ['open', 'confirmed', 'false_positive', 'resolved'] %}<option {% if f.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                    </select>
+                </form>
+            </div>
+        </div>
+    {% else %}<p class="text-secondary">Belum ada temuan.</p>{% endfor %}</div>
+</div>
+
+<div class="tab-pane fade {% if tab == 'notes' %}show active{% endif %}" id="tab-notes" role="tabpanel">
+    <form method="POST" action="{{ url_for('cases.add_note', case_id=case.id) }}" class="mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea class="form-control mb-2" name="body" rows="4" placeholder="Catatan analis (Markdown diperbolehkan)" required></textarea>
+        <div class="d-flex gap-2"><select name="entity_id" class="form-select form-select-sm" style="max-width: 360px" aria-label="Kaitkan ke entity">
+            <option value="">— tidak dikaitkan ke entity —</option>{% for e in entities %}<option value="{{ e.id }}">{{ e.type }}: {{ e.value[:60] }}</option>{% endfor %}</select>
+            <button class="btn btn-sm btn-success">Simpan catatan</button></div>
+    </form>
+    {% for n in notes %}<div class="card border-secondary mb-2"><div class="card-body py-2">
+        <small class="text-secondary">{{ n.created_at }} · {{ n.author }}{% if n.entity_value %} · <code>{{ n.entity_value }}</code>{% endif %}</small>
+        <div style="white-space: pre-wrap">{{ n.body }}</div></div></div>
+    {% else %}<p class="text-secondary">Belum ada catatan.</p>{% endfor %}
+</div>
+
+<div class="tab-pane fade {% if tab == 'attachments' %}show active{% endif %}" id="tab-attachments" role="tabpanel">
+    <form method="POST" action="{{ url_for('cases.upload', case_id=case.id) }}" enctype="multipart/form-data" class="row g-2 mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-5"><input type="file" class="form-control form-control-sm" name="file" required aria-label="File"></div>
+        <div class="col-md-5"><input class="form-control form-control-sm" name="note" placeholder="Keterangan (sumber, cara perolehan)"></div>
+        <div class="col-md-2"><button class="btn btn-sm btn-success w-100">Unggah</button></div>
+    </form>
+    <table class="table table-dark table-sm"><thead><tr><th>File</th><th>SHA-256</th><th>Ukuran</th><th>Oleh</th><th>Waktu</th></tr></thead>
+    <tbody>{% for a in attachments %}<tr><td><a class="text-info" href="{{ url_for('cases.download', case_id=case.id, attachment_id=a.id) }}">{{ a.filename }}</a>{% if a.note %}<br><small class="text-secondary">{{ a.note }}</small>{% endif %}</td>
+        <td><code class="small">{{ a.sha256[:16] }}…</code>{{ copy_btn(a.sha256) }}</td><td>{{ a.size }}</td><td>{{ a.author }}</td><td><small>{{ a.created_at }}</small></td></tr>
+    {% else %}<tr><td colspan="5" class="text-secondary">Belum ada lampiran.</td></tr>{% endfor %}</tbody></table>
+    <small class="text-secondary">File disimpan berdasarkan hash SHA-256; setiap akses dicatat di chain of custody dan integritasnya diverifikasi.</small>
+</div>
+
+<div class="tab-pane fade {% if tab == 'watch' %}show active{% endif %}" id="tab-watch" role="tabpanel">
+    <form method="POST" action="{{ url_for('cases.add_watch', case_id=case.id) }}" class="row g-2 mb-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-2"><select class="form-select form-select-sm" name="type" aria-label="Tipe target">{% for t in ['domain', 'ip', 'email', 'username'] %}<option>{{ t }}</option>{% endfor %}</select></div>
+        <div class="col-md-3"><input class="form-control form-control-sm" name="target" placeholder="target" required list="entity-values"></div>
+        <div class="col-md-2"><select class="form-select form-select-sm" name="interval" aria-label="Interval"><option value="360">6 jam</option><option value="1440" selected>Harian</option><option value="10080">Mingguan</option></select></div>
+        <div class="col-md-4"><input class="form-control form-control-sm" name="webhook" placeholder="Webhook (Slack/Discord/URL) opsional"></div>
+        <div class="col-md-1"><button class="btn btn-sm btn-success w-100">Pantau</button></div>
+        <datalist id="entity-values">{% for e in entities if e.type in ('domain', 'subdomain', 'ip', 'email', 'username') %}<option value="{{ e.value }}">{% endfor %}</datalist>
+    </form>
+    <table class="table table-dark table-sm"><tbody>{% for w in watches %}
+        <tr><td><span class="badge bg-dark border border-secondary">{{ w.type }}</span> <code>{{ w.target }}</code></td><td><small>{{ w.checks|join(', ') }}</small></td>
+            <td><small>tiap {{ w.interval_min }} mnt · terakhir {{ w.last_run or '-' }} ({{ w.last_status or 'belum' }})</small></td></tr>
+    {% else %}<tr><td class="text-secondary">Belum ada target yang dipantau.</td></tr>{% endfor %}</tbody></table>
+    <a class="small text-info" href="{{ url_for('watch.index') }}">Kelola semua watchlist →</a>
+</div>
+
+<div class="tab-pane fade {% if tab == 'settings' %}show active{% endif %}" id="tab-settings" role="tabpanel">
+    <div class="row g-3">
+        <div class="col-lg-7"><form method="POST" action="{{ url_for('cases.update', case_id=case.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="form-label small" for="c-title">Judul</label><input id="c-title" class="form-control mb-2" name="title" value="{{ case.title }}">
+            <label class="form-label small" for="c-desc">Deskripsi</label><textarea id="c-desc" class="form-control mb-2" name="description" rows="4">{{ case.description }}</textarea>
+            <label class="form-label small" for="c-tags">Tag</label><input id="c-tags" class="form-control mb-2" name="tags" value="{{ case.tags|join(', ') }}">
+            <label class="form-label small" for="c-status">Status</label><select id="c-status" class="form-select mb-3" name="status">{% for s in ['open', 'closed', 'archived'] %}<option {% if case.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+            <button class="btn btn-success">Simpan</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('cases.custody', case_id=case.id) }}"><i class="bi bi-link-45deg"></i> Chain of custody</a>
+        </form></div>
+        <div class="col-lg-5"><div class="card border-danger"><div class="card-body">
+            <h6 class="text-danger">Hapus case</h6>
+            <p class="small text-secondary">Menghapus semua entity, temuan, catatan, lampiran, dan catatan custody. Tidak bisa dibatalkan.</p>
+            <form method="POST" action="{{ url_for('cases.delete', case_id=case.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input class="form-control form-control-sm mb-2" name="confirm" placeholder="Ketik {{ case.id }} untuk konfirmasi" aria-label="Konfirmasi">
+                <button class="btn btn-sm btn-outline-danger">Hapus permanen</button>
+            </form>
+        </div></div></div>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.js"></script>
+<script>
+(function () {
+    const caseId = {{ case.id|tojson }};
+    let graphDrawn = false, timelineDrawn = false;
+    function drawGraph() {
+        if (graphDrawn || typeof vis === 'undefined') return;
+        graphDrawn = true;
+        fetch('{{ url_for("cases.graph", case_id=case.id) }}').then(r => r.json()).then(data => {
+            const el = document.getElementById('case-graph');
+            if (!data.nodes.length) { el.innerHTML = '<p class="text-secondary p-3">Belum ada entity.</p>'; return; }
+            const network = new vis.Network(el, {nodes: new vis.DataSet(data.nodes), edges: new vis.DataSet(data.edges)}, {
+                nodes: {shape: 'dot', size: 12, borderWidth: 2, font: {size: 11, face: 'monospace'}},
+                edges: {color: {color: '#3a4a3a'}, font: {size: 9, color: '#888', strokeWidth: 0}, smooth: {type: 'continuous'}},
+                physics: {solver: 'forceAtlas2Based', stabilization: {iterations: 200}},
+                interaction: {hover: true, tooltipDelay: 120},
+            });
+            network.on('click', p => {
+                const n = data.nodes.find(x => x.id === p.nodes[0]);
+                document.getElementById('graph-detail').textContent = n ? n.title : '';
+            });
+        });
+    }
+    function drawTimeline() {
+        if (timelineDrawn || typeof vis === 'undefined' || !vis.Timeline) return;
+        timelineDrawn = true;
+        fetch('{{ url_for("cases.timeline", case_id=case.id) }}').then(r => r.json()).then(events => {
+            const items = events.map(e => ({id: e.id, content: e.kind, title: e.summary, start: e.ts.replace(' ', 'T'), group: e.kind}));
+            const groups = [...new Set(events.map(e => e.kind))].map(k => ({id: k, content: k}));
+            new vis.Timeline(document.getElementById('case-timeline'), new vis.DataSet(items), new vis.DataSet(groups), {stack: false, height: '260px'});
+        });
+    }
+    document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('shown.bs.tab', () => {
+        if (btn.dataset.tab === 'graph') drawGraph();
+        if (btn.dataset.tab === 'timeline') drawTimeline();
+        const url = new URL(window.location); url.searchParams.set('tab', btn.dataset.tab); history.replaceState(null, '', url);
+    }));
+    const active = {{ tab|tojson }};
+    if (active === 'graph') drawGraph();
+    if (active === 'timeline') drawTimeline();
+    const filter = document.getElementById('entity-filter');
+    if (filter) filter.addEventListener('input', () => {
+        const q = filter.value.toLowerCase();
+        document.querySelectorAll('#entity-table tbody tr').forEach(tr => { tr.hidden = q && !tr.textContent.toLowerCase().includes(q); });
+    });
+})();
+</script>
+{% endblock %}

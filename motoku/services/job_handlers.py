@@ -5,8 +5,13 @@ from tools import cloud_tool, portscan_tool, subdomain_tool, takeover_tool, typo
 
 
 @jobs.handler('recon', 'Recon domain lengkap')
-def recon_job(ctx, domain, options=None):
-    return recon.run(ctx, domain, options)
+def recon_job(ctx, domain, options=None, case_id=None, actor=None):
+    report = recon.run(ctx, domain, options)
+    if case_id:
+        from services import importer
+        ctx.progress(99, f'Import hasil ke case {case_id}')
+        report['case_import'] = importer.import_result(case_id, 'recon', report, actor or 'recon-job', label=domain)
+    return report
 
 
 @jobs.handler('subdomain', 'Subdomain enumeration')
@@ -55,3 +60,12 @@ def cloud_job(ctx, keyword, providers=('s3', 'gcs', 'azure'), github=True):
         except Exception as e:
             result['github'] = {'status': 'error', 'message': str(e), 'results': []}
     return result
+
+
+@jobs.handler('watch', 'Watchlist check')
+def watch_job(ctx, watch_id):
+    from services import watch
+    item = watch.get(watch_id)
+    if item is None:
+        raise ValueError('Watch item tidak ditemukan')
+    return watch.run_watch(item, progress=lambda p, m: ctx.progress(p, m))

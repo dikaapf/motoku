@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}API v1{% endblock %}
+{% block content %}
+<h2><i class="bi bi-braces text-info"></i> REST API v1</h2>
+<p>Autentikasi: header <code>Authorization: Bearer mtk_…</code> (atau <code>X-API-Key</code>). Buat token di <a class="text-info" href="{{ url_for('settings.tokens') }}">Pengaturan → API Token</a>.</p>
+{% set base = request.host_url.rstrip('/') ~ '/api/v1' %}
+<div class="table-responsive"><table class="table table-dark table-sm">
+<thead><tr><th>Method</th><th>Path</th><th>Scope</th><th>Keterangan</th></tr></thead><tbody>
+{% for m, p, s, d in [
+    ('GET', '/me', 'read', 'Info token'),
+    ('GET', '/detect?q=…', 'read', 'Deteksi tipe input + tool yang cocok'),
+    ('GET', '/tools', 'read', 'Daftar tool sinkron'),
+    ('POST', '/tools/<name>', 'scan', 'Jalankan tool: {"value": "...", "case_id"?: "..."}'),
+    ('POST', '/jobs', 'scan', 'Job background: {"kind": "recon", "params": {"domain": "..."}, "case_id"?: "..."}'),
+    ('GET', '/jobs/<id>', 'read', 'Status + hasil job'),
+    ('GET', '/cases', 'read', 'Daftar case (?status=open)'),
+    ('POST', '/cases', 'write', 'Buat case: {"title", "description", "tags"}'),
+    ('GET', '/cases/<id>', 'read', 'Detail case: entity, temuan, relasi, custody'),
+    ('POST', '/cases/<id>/entities', 'write', '{"type", "value", "label"?}'),
+    ('POST', '/cases/<id>/findings', 'write', '{"severity", "title", "detail"?}'),
+    ('POST', '/cases/<id>/notes', 'write', '{"body"}'),
+    ('POST', '/cases/<id>/import', 'write', '{"job_id"} atau {"tool", "data"}'),
+    ('GET', '/cases/<id>/report?format=json|md', 'read', 'Laporan'),
+    ('GET/POST', '/watchlist', 'read/write', 'Daftar / tambah watch {"type", "target", "checks"?, "interval_min"?, "case_id"?, "notify"?}'),
+    ('GET', '/alerts', 'read', 'Alert (?case_id, ?unacked=1)'),
+] %}<tr><td><code>{{ m }}</code></td><td><code>{{ p }}</code></td><td>{{ s }}</td><td><small>{{ d }}</small></td></tr>{% endfor %}
+</tbody></table></div>
+<h5>Tool sinkron</h5>
+<p>{% for name, (f, desc) in tools.items() %}<code>{{ name }}</code> <small class="text-secondary">{{ desc }}</small>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+<h5>Jenis job</h5>
+<p>{% for k, h in job_kinds.items() if k != 'watch' %}<code>{{ k }}</code> <small class="text-secondary">{{ h.label }}</small>{% if not loop.last %} · {% endif %}{% endfor %}</p>
+<h5>Contoh</h5>
+<pre class="job-log">export MOTOKU_URL={{ request.host_url.rstrip('/') }}
+export MOTOKU_TOKEN=mtk_...
+
+curl -H "Authorization: Bearer $MOTOKU_TOKEN" "$MOTOKU_URL/api/v1/detect?q=example.com"
+curl -X POST -H "Authorization: Bearer $MOTOKU_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"value": "example.com"}' "$MOTOKU_URL/api/v1/tools/dns-security"
+curl -X POST -H "Authorization: Bearer $MOTOKU_TOKEN" -H 'Content-Type: application/json' \
+     -d '{"kind": "recon", "params": {"domain": "example.com"}, "case_id": "20261127-abc123"}' "$MOTOKU_URL/api/v1/jobs"
+
+# CLI
+python cli.py recon example.com --case 20261127-abc123 --wait
+python cli.py case report 20261127-abc123 --format md > laporan.md</pre>
+{% endblock %}

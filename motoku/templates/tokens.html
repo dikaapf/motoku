@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}API Token{% endblock %}
+{% block content %}
+<h2><i class="bi bi-key-fill text-warning"></i> API Token</h2>
+<p class="text-secondary">Token untuk REST API, CLI, dan ekstensi browser. Lihat <a class="text-info" href="{{ url_for('api_v1.docs') }}">dokumentasi API</a>.</p>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+{% if new_token %}
+<div class="alert alert-success">
+    <strong>Token baru — salin sekarang, tidak akan ditampilkan lagi:</strong>
+    <div class="d-flex gap-2 align-items-center mt-2"><code class="fs-6 text-break" id="new-token">{{ new_token }}</code>
+        <button class="btn btn-sm btn-outline-light copy-btn" data-copy="{{ new_token }}"><i class="bi bi-clipboard"></i></button></div>
+</div>
+{% endif %}
+<div class="row">
+    <div class="col-lg-4 mb-3"><div class="card border-warning"><div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="form-label" for="t-name">Nama</label>
+            <input class="form-control mb-2" id="t-name" name="name" required placeholder="cli-laptop">
+            {% for s in scopes %}<div class="form-check"><input class="form-check-input" type="checkbox" name="scopes" value="{{ s }}" id="s-{{ s }}" {% if s == 'read' %}checked{% endif %}><label class="form-check-label" for="s-{{ s }}">{{ s }}</label></div>{% endfor %}
+            <small class="text-secondary d-block mb-3">read = baca data · write = ubah case · scan = jalankan tool/job</small>
+            <button class="btn btn-warning w-100">Buat token</button>
+        </form>
+    </div></div></div>
+    <div class="col-lg-8">
+        <table class="table table-dark table-sm align-middle"><thead><tr><th>Nama</th><th>Prefix</th><th>Scope</th><th>Dibuat</th><th>Terakhir dipakai</th><th></th></tr></thead>
+        <tbody>{% for t in tokens %}<tr class="{% if t.revoked %}opacity-50{% endif %}"><td>{{ t.name }}</td><td><code>{{ t.prefix }}…</code></td><td>{{ t.scopes|join(', ') }}</td><td><small>{{ t.created_at }}</small></td><td><small>{{ t.last_used or '-' }}</small></td>
+            <td>{% if t.revoked %}<span class="badge bg-secondary">dicabut</span>{% else %}<form method="POST" action="{{ url_for('settings.revoke', token_id=t.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Cabut</button></form>{% endif %}</td></tr>
+        {% else %}<tr><td colspan="6" class="text-secondary">Belum ada token.</td></tr>{% endfor %}</tbody></table>
+    </div>
+</div>
+{% endblock %}
